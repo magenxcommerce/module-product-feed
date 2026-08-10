@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ *
+ * WARNING - `parent` is NOT validated by menu.xsd (it is typed as a plain
+ * string), and an id that does not exist makes Menu\Builder::getResult() throw
+ * OutOfRangeException: "Specified invalid parent id". That runs inside
+ * getStartupPageUrl() during request validation, so a bad value takes EVERY
+ * admin page down, not just this menu entry.
+ *
+ * Magento_Catalog::catalog is declared by Magento_Catalog's own
+ * etc/adminhtml/menu.xml and was cross-checked against core 2.4.8.
+ -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="Magenx_ProductFeed::feeds" title="Product Feeds" module="Magenx_ProductFeed" sortOrder="90"
+             parent="Magento_Catalog::catalog" resource="Magenx_ProductFeed::feeds"/>
+        <add id="Magenx_ProductFeed::feed" title="Feeds" module="Magenx_ProductFeed" sortOrder="10"
+             parent="Magenx_ProductFeed::feeds" action="magenx_product_feed/feed/index"
+             resource="Magenx_ProductFeed::feed"/>
+    </menu>
+</config>

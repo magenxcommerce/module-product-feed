@@ -1,0 +1,83 @@
+{
+    "magenx_feed": {
+        "column": {
+            "feed_id": true,
+            "name": true,
+            "code": true,
+            "description": true,
+            "store_id": true,
+            "format": true,
+            "filename": true,
+            "marketplace": true,
+            "template": true,
+            "field_map": true,
+            "csv_delimiter": true,
+            "csv_enclosure": true,
+            "csv_include_header": true,
+            "csv_bom": true,
+            "conditions_serialized": true,
+            "validation_rules": true,
+            "schedule_days": true,
+            "schedule_times": true,
+            "is_active": true,
+            "url_secret": true,
+            "status": true,
+            "last_generated_at": true,
+            "last_filename": true,
+            "generation_time": true,
+            "product_count": true,
+            "last_error": true,
+            "cursor_position": true,
+            "created_at": true,
+            "updated_at": true
+        },
+        "index": {
+            "MAGENX_FEED_IS_ACTIVE_STORE_ID": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGENX_FEED_CODE": true,
+            "MAGENX_FEED_STORE_ID_STORE_STORE_ID": true
+        }
+    },
+    "magenx_feed_delivery": {
+        "column": {
+            "delivery_id": true,
+            "feed_id": true,
+            "type": true,
+            "is_active": true,
+            "config": true,
+            "last_delivered_at": true,
+            "last_status": true,
+            "last_message": true,
+            "created_at": true,
+            "updated_at": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGENX_FEED_DELIVERY_FEED_ID_TYPE": true,
+            "MAGENX_FEED_DELIVERY_FEED_ID_MAGENX_FEED_FEED_ID": true
+        }
+    },
+    "magenx_feed_history": {
+        "column": {
+            "history_id": true,
+            "feed_id": true,
+            "type": true,
+            "status": true,
+            "message": true,
+            "product_count": true,
+            "duration_ms": true,
+            "details": true,
+            "created_at": true
+        },
+        "index": {
+            "MAGENX_FEED_HISTORY_FEED_ID_CREATED_AT": true,
+            "MAGENX_FEED_HISTORY_CREATED_AT": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "MAGENX_FEED_HISTORY_FEED_ID_MAGENX_FEED_FEED_ID": true
+        }
+    }
+}

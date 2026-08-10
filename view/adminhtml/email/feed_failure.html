@@ -1,0 +1,16 @@
+<!--@subject Product feed "{{var feed_name}}" failed to generate @-->
+<!--@vars {
+"var feed_name":"Feed name",
+"var feed_code":"Feed code",
+"var store_id":"Store view ID",
+"var error":"Error message"
+} @-->
+{{template config_path="design/email/header_template"}}
+
+<p>The product feed <strong>{{var feed_name}}</strong> (<code>{{var feed_code}}</code>, store view {{var store_id}}) failed to generate.</p>
+
+<p><strong>Error</strong><br/>{{var error}}</p>
+
+<p>The feed keeps whatever file it last published, so any consumer fetching it still receives the previous version rather than nothing. Full details are in the feed's History tab and in <code>var/log/magenx_product_feed.log</code>.</p>
+
+{{template config_path="design/email/footer_template"}}

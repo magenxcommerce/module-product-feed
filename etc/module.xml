@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
+    <module name="Magenx_ProductFeed">
+        <sequence>
+            <!-- Store: feeds are bound to a single store view and every value is
+                 resolved in that scope (prices, URLs, attribute values). -->
+            <module name="Magento_Store"/>
+            <!-- Catalog: the product collection the export iterates. -->
+            <module name="Magento_Catalog"/>
+            <!-- CatalogInventory: qty / stock status for the stock attributes. -->
+            <module name="Magento_CatalogInventory"/>
+            <!-- CatalogWidget: the condition classes the feed filter is built from.
+                 It must be THIS flavour and not Magento_CatalogRule's - only these
+                 implement getMappedSqlField(), which is what lets the whole
+                 condition tree be pushed down into one SQL WHERE clause instead of
+                 instantiating and validating every product in PHP. -->
+            <module name="Magento_CatalogWidget"/>
+            <!-- CatalogRule: Magento\Rule\Model\AbstractModel lives in the framework,
+                 but the admin condition-tree JS and the chooser blocks come from here. -->
+            <module name="Magento_CatalogRule"/>
+            <module name="Magento_Eav"/>
+            <!-- Directory: currency conversion for the price filters. -->
+            <module name="Magento_Directory"/>
+            <!-- Review: the {% for review in context.reviews %} loop. -->
+            <module name="Magento_Review"/>
+            <module name="Magento_Backend"/>
+            <module name="Magento_Ui"/>
+            <module name="Magento_Cron"/>
+            <module name="Magento_Email"/>
+        </sequence>
+    </module>
+</config>

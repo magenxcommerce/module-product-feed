@@ -1,0 +1,218 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ */
+-->
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <!-- ===================================================================
+         The feed definition.
+
+         Magenx\ProductFeed\Model\Feed extends Magento\Rule\Model\AbstractModel
+         so the product filter gets the standard condition tree for free. That
+         parent serializes getConditions() into a column named exactly
+         conditions_serialized - the name is fixed by the framework, not a free
+         choice.
+
+         Deliberately NOT declared: from_date / to_date. AbstractModel::loadPost()
+         converts those two keys (and only those two) into \DateTime objects, so
+         any controller that later casts them to string fatals. A feed has no use
+         for a validity window - it is either active or it is not. If one is ever
+         added, compare timestamps, never (string).
+         ==================================================================== -->
+    <table name="magenx_feed" resource="default" engine="innodb"
+           comment="Product feed definitions">
+        <column xsi:type="int" name="feed_id" unsigned="true" nullable="false" identity="true"
+                comment="Feed ID"/>
+        <column xsi:type="varchar" name="name" length="255" nullable="false"
+                comment="Admin-facing feed name"/>
+        <column xsi:type="varchar" name="code" length="64" nullable="false"
+                comment="Stable machine identifier, used by the CLI (--code=) so scripts do not depend on an auto-increment id"/>
+        <column xsi:type="text" name="description" nullable="true"
+                comment="Optional admin note shown in the grid"/>
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" default="0"
+                comment="Store view whose prices, URLs and attribute values are exported. A feed targets exactly one store view."/>
+        <column xsi:type="varchar" name="format" length="16" nullable="false" default="xml"
+                comment="xml | csv | tsv | jsonl"/>
+        <column xsi:type="varchar" name="filename" length="255" nullable="false"
+                comment="Output file name. Template placeholders are allowed, e.g. products-{{ context.date }}.xml"/>
+        <column xsi:type="varchar" name="marketplace" length="64" nullable="true"
+                comment="Target channel identifier (google, meta, pinterest, ...). Drives which delivery options the admin form offers - empty means download/FTP only."/>
+        <column xsi:type="longtext" name="template" nullable="true"
+                comment="Feed body template. Data only - the renderer can never execute PHP from this column."/>
+        <column xsi:type="longtext" name="field_map" nullable="true"
+                comment="JSON column-to-expression map for field-mapped formats (csv/tsv/jsonl). This is what a push deliverer consumes as a record - free-form XML templates have no record equivalent."/>
+        <!-- Delimiter and enclosure are stored as CODES, not as the literal
+             characters, for two reasons. A tab cannot be typed into a text field,
+             and - the load-bearing one - Magento's declarative schema emits column
+             defaults and comments as COMMENT "..." / DEFAULT "..." with NO
+             escaping, so a literal double quote as a default produces DEFAULT """
+             and unbalances the quoting of the whole CREATE TABLE. Pdo\Mysql::query()
+             then sees a later semicolon as a statement separator and refuses the
+             DDL with "Multiple queries can't be executed", which fails
+             setup:upgrade outright. Never put a double quote in a default or a
+             comment in this file. -->
+        <column xsi:type="varchar" name="csv_delimiter" length="16" nullable="false" default="comma"
+                comment="Field delimiter code for csv: comma, semicolon, tab, pipe, colon or space"/>
+        <column xsi:type="varchar" name="csv_enclosure" length="16" nullable="false" default="double"
+                comment="Field enclosure code for csv: double, single or none"/>
+        <column xsi:type="smallint" name="csv_include_header" unsigned="true" nullable="false" default="1"
+                comment="Emit the column-name header row"/>
+        <column xsi:type="smallint" name="csv_bom" unsigned="true" nullable="false" default="0"
+                comment="Prepend a UTF-8 BOM. Some consumers require it - most reject it. Off by default."/>
+        <column xsi:type="mediumtext" name="conditions_serialized" nullable="true"
+                comment="Product filter condition tree (JSON). Column name fixed by Magento\Rule\Model\AbstractModel."/>
+        <column xsi:type="text" name="validation_rules" nullable="true"
+                comment="JSON array of per-field validation rules with severities"/>
+        <column xsi:type="varchar" name="schedule_days" length="32" nullable="true"
+                comment="Comma-separated ISO day numbers (1=Mon..7=Sun) the feed generates on"/>
+        <column xsi:type="varchar" name="schedule_times" length="255" nullable="true"
+                comment="Comma-separated HH:MM times of day, evaluated in the store's timezone"/>
+        <column xsi:type="smallint" name="is_active" unsigned="true" nullable="false" default="0"
+                comment="New feeds start inactive so a half-configured feed is never published"/>
+        <column xsi:type="varchar" name="url_secret" length="32" nullable="true"
+                comment="Random path segment in the public feed URL. A feed is a complete machine-readable catalog dump and may carry cost or supplier data, so the URL must not be guessable."/>
+
+        <!-- Run state. Denormalised onto the feed row because the admin grid reads
+             all of it per row; deriving it from magenx_feed_history would mean a
+             correlated subquery per grid row. -->
+        <column xsi:type="varchar" name="status" length="32" nullable="false" default="not_generated"
+                comment="not_generated | processing | ready | warning | error | disabled"/>
+        <column xsi:type="timestamp" name="last_generated_at" on_update="false" nullable="true"
+                comment="Completion time of the last successful generation"/>
+        <column xsi:type="varchar" name="last_filename" length="255" nullable="true"
+                comment="Name the last run actually published under. Deliverers MUST use this rather than re-rendering the filename template: a date-stamped feed generated just before midnight would otherwise be looked for under tomorrow's name."/>
+        <column xsi:type="int" name="generation_time" unsigned="true" nullable="true"
+                comment="Duration of the last successful generation, in milliseconds"/>
+        <column xsi:type="int" name="product_count" unsigned="true" nullable="true"
+                comment="Rows written by the last successful generation"/>
+        <column xsi:type="text" name="last_error" nullable="true"
+                comment="Message from the last failed run, shown in the grid"/>
+        <column xsi:type="int" name="cursor_position" unsigned="true" nullable="true"
+                comment="Resume point (last exported entity_id) for a run still in progress. NULL when idle."/>
+
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Created At"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Updated At"/>
+
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="feed_id"/>
+        </constraint>
+
+        <constraint xsi:type="unique" referenceId="MAGENX_FEED_CODE">
+            <column name="code"/>
+        </constraint>
+
+        <!-- Serves the cron dispatcher, which reads every active feed on each tick
+             and decides which are due. is_active first because it is the more
+             selective of the two on a real store (most feeds are off). -->
+        <index referenceId="MAGENX_FEED_IS_ACTIVE_STORE_ID" indexType="btree">
+            <column name="is_active"/>
+            <column name="store_id"/>
+        </index>
+
+        <constraint xsi:type="foreign" referenceId="MAGENX_FEED_STORE_ID_STORE_STORE_ID"
+                    table="magenx_feed" column="store_id"
+                    referenceTable="store" referenceColumn="store_id" onDelete="CASCADE"/>
+    </table>
+
+    <!-- ===================================================================
+         Delivery destinations. A table rather than columns on magenx_feed
+         because a feed is routinely delivered to two places at once - published
+         at its public URL for a fetch-based consumer AND pushed to a catalog
+         API - and each destination carries its own credentials and last-run
+         state.
+         ==================================================================== -->
+    <table name="magenx_feed_delivery" resource="default" engine="innodb"
+           comment="Per-feed delivery destinations">
+        <column xsi:type="int" name="delivery_id" unsigned="true" nullable="false" identity="true"
+                comment="Delivery ID"/>
+        <column xsi:type="int" name="feed_id" unsigned="true" nullable="false"
+                comment="Owning feed"/>
+        <column xsi:type="varchar" name="type" length="32" nullable="false"
+                comment="Deliverer code registered in di.xml: file | ftp | sftp | google_datasource | meta_batch"/>
+        <column xsi:type="smallint" name="is_active" unsigned="true" nullable="false" default="0"
+                comment="Whether this destination is delivered to"/>
+        <column xsi:type="text" name="config" nullable="true"
+                comment="JSON deliverer settings. Every credential inside is encrypted with EncryptorInterface before this column is written - never store a plaintext password or token here."/>
+        <column xsi:type="timestamp" name="last_delivered_at" on_update="false" nullable="true"
+                comment="Last successful delivery"/>
+        <column xsi:type="varchar" name="last_status" length="32" nullable="true"
+                comment="success | error | skipped"/>
+        <column xsi:type="text" name="last_message" nullable="true"
+                comment="Outcome of the last attempt, shown on the feed form"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Created At"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Updated At"/>
+
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="delivery_id"/>
+        </constraint>
+
+        <!-- One destination of a given type per feed: two Google data sources on
+             one feed would fight over the same registration. -->
+        <constraint xsi:type="unique" referenceId="MAGENX_FEED_DELIVERY_FEED_ID_TYPE">
+            <column name="feed_id"/>
+            <column name="type"/>
+        </constraint>
+
+        <constraint xsi:type="foreign" referenceId="MAGENX_FEED_DELIVERY_FEED_ID_MAGENX_FEED_FEED_ID"
+                    table="magenx_feed_delivery" column="feed_id"
+                    referenceTable="magenx_feed" referenceColumn="feed_id" onDelete="CASCADE"/>
+    </table>
+
+    <!-- ===================================================================
+         Run log. Validation findings live in `details` as JSON rather than in a
+         fourth table: they are read only alongside their run, never queried
+         across runs, so a table would buy nothing and cost a join.
+         ==================================================================== -->
+    <table name="magenx_feed_history" resource="default" engine="innodb"
+           comment="Generation, delivery and validation run log">
+        <column xsi:type="int" name="history_id" unsigned="true" nullable="false" identity="true"
+                comment="History ID"/>
+        <column xsi:type="int" name="feed_id" unsigned="true" nullable="false"
+                comment="Owning feed"/>
+        <column xsi:type="varchar" name="type" length="32" nullable="false"
+                comment="generate | deliver | validate"/>
+        <column xsi:type="varchar" name="status" length="32" nullable="false"
+                comment="success | warning | error | skipped"/>
+        <column xsi:type="text" name="message" nullable="true"
+                comment="Human-readable outcome"/>
+        <column xsi:type="int" name="product_count" unsigned="true" nullable="true"
+                comment="Rows written, for generate runs"/>
+        <column xsi:type="int" name="duration_ms" unsigned="true" nullable="true"
+                comment="Wall-clock duration in milliseconds"/>
+        <column xsi:type="mediumtext" name="details" nullable="true"
+                comment="JSON payload: validation findings, per-deliverer results, skip reasons"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP"
+                comment="Created At"/>
+
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="history_id"/>
+        </constraint>
+
+        <!-- The History tab's only read: newest-first for one feed. created_at
+             last and descending-friendly so the index alone answers the sort.
+             No index on `type` or `status`: the tab pages a single feed, which
+             this index already narrows to a handful of rows. -->
+        <index referenceId="MAGENX_FEED_HISTORY_FEED_ID_CREATED_AT" indexType="btree">
+            <column name="feed_id"/>
+            <column name="created_at"/>
+        </index>
+
+        <!-- Serves the rolling prune only. Kept separate from the index above
+             because the prune scans across every feed, not within one. -->
+        <index referenceId="MAGENX_FEED_HISTORY_CREATED_AT" indexType="btree">
+            <column name="created_at"/>
+        </index>
+
+        <constraint xsi:type="foreign" referenceId="MAGENX_FEED_HISTORY_FEED_ID_MAGENX_FEED_FEED_ID"
+                    table="magenx_feed_history" column="feed_id"
+                    referenceTable="magenx_feed" referenceColumn="feed_id" onDelete="CASCADE"/>
+    </table>
+</schema>

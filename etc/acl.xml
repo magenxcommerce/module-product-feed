@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ *
+ * WARNING - acl.xml files merge STRUCTURALLY, by path AND id, not by id alone.
+ * Re-declaring a core resource id at a path different from the one core declares
+ * it at leaves BOTH nodes in the merged tree, and Acl\Builder::getAcl() then
+ * throws "Resource id '<id>' already exists in the ACL". That fires from
+ * Backend\Model\Auth\Session::refreshAcl() inside the authentication plugin, so
+ * EVERY admin page 500s - not just this module's. acl.xsd types `id` as a plain
+ * string, so XSD validation cannot catch it.
+ *
+ * The config branch below therefore reproduces core's full chain verbatim:
+ *   Magento_Backend::admin
+ *     > Magento_Backend::stores
+ *       > Magento_Backend::stores_settings
+ *         > Magento_Config::config
+ * See Magento/Config/etc/acl.xml. Do not shorten it.
+ -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Acl/etc/acl.xsd">
+    <acl>
+        <resources>
+            <resource id="Magento_Backend::admin">
+                <resource id="Magento_Catalog::catalog">
+                    <resource id="Magenx_ProductFeed::feeds" title="Product Feeds" sortOrder="90">
+                        <resource id="Magenx_ProductFeed::feed" title="Feeds" sortOrder="10"/>
+                        <resource id="Magenx_ProductFeed::generate" title="Generate Feeds" sortOrder="20"/>
+                        <resource id="Magenx_ProductFeed::deliver" title="Deliver Feeds" sortOrder="30"/>
+                    </resource>
+                </resource>
+                <resource id="Magento_Backend::stores">
+                    <resource id="Magento_Backend::stores_settings">
+                        <resource id="Magento_Config::config">
+                            <resource id="Magenx_ProductFeed::config" title="Product Feed Settings" sortOrder="190"/>
+                        </resource>
+                    </resource>
+                </resource>
+            </resource>
+        </resources>
+    </acl>
+</config>

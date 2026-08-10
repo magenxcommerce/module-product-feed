@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ *
+ * No layout= attribute: adminhtml already defaults to admin-1column, and
+ * admin-2columns-left is the System Configuration page's layout - using it here
+ * reserves an empty sidebar and leaves the grid narrowed and offset.
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="content">
+            <uiComponent name="magenx_product_feed_listing"/>
+        </referenceContainer>
+    </body>
+</page>

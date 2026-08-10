@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ *
+ * Defaults mirror etc/adminhtml/system.xml exactly, path for path.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <magenx_product_feed>
+            <general>
+                <!-- Off by default: this module writes files into pub/media and can
+                     push a store's entire catalog to a third party. Nothing should
+                     happen until a merchant has configured a feed on purpose. -->
+                <enabled>0</enabled>
+            </general>
+            <generation>
+                <!-- Products loaded, rendered and written per batch. Each batch is a
+                     fixed number of queries regardless of this value, so raising it
+                     trades memory for fewer round trips. -->
+                <batch_size>200</batch_size>
+                <!-- Wall-clock budget for a single cron tick. When it is exhausted the
+                     run persists its cursor and resumes on the next tick, so a catalog
+                     larger than one cron window still completes. -->
+                <max_execution_seconds>50</max_execution_seconds>
+                <!-- Rolling prune of magenx_feed_history. -->
+                <history_retention_days>30</history_retention_days>
+                <!-- Validate every generated feed and record the findings. -->
+                <validate_after_generation>1</validate_after_generation>
+            </generation>
+            <google>
+                <merchant_id/>
+                <!-- File name inside var/magenx_feed/gmc/. The service-account key is
+                     NEVER stored under pub/media: that directory is web-served, and the
+                     key grants programmatic access to the Merchant Center account. -->
+                <service_account_key/>
+            </google>
+            <notifications>
+                <enabled>0</enabled>
+                <recipient/>
+                <failure_template>magenx_product_feed_notifications_failure_template</failure_template>
+            </notifications>
+            <cron>
+                <!-- A dispatcher, not the feeds themselves. Per-feed schedules (days of
+                     week x times of day) live on the feed row and cannot be expressed as
+                     a config_path, so this job ticks and decides which feeds are due. -->
+                <dispatch_schedule>*/5 * * * *</dispatch_schedule>
+                <deliver_schedule>*/15 * * * *</deliver_schedule>
+            </cron>
+        </magenx_product_feed>
+    </default>
+</config>

@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ *
+ * Both jobs live in the `default` group deliberately. A dedicated cron group is
+ * never picked up on the many managed hosts that invoke `bin/magento cron:run`
+ * with an explicit group flag, so feeds would silently never generate while the
+ * CLI command works perfectly by hand - a support burden with no upside here.
+ *
+ * Schedules are <config_path> rather than <schedule> so an admin can retime them
+ * without a deploy.
+ -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <!-- Ticks, then decides which feeds are due from their own per-feed
+             schedule, and continues any run that ran out of time budget on an
+             earlier tick. Also prunes magenx_feed_history. -->
+        <job name="magenx_product_feed_dispatch"
+             instance="Magenx\ProductFeed\Cron\DispatchGeneration" method="execute">
+            <config_path>magenx_product_feed/cron/dispatch_schedule</config_path>
+        </job>
+        <!-- Retries deliveries that failed. Runs after generation by virtue of its
+             coarser schedule; it never generates, so ordering is not critical. -->
+        <job name="magenx_product_feed_deliver"
+             instance="Magenx\ProductFeed\Cron\RetryDelivery" method="execute">
+            <config_path>magenx_product_feed/cron/deliver_schedule</config_path>
+        </job>
+    </group>
+</config>

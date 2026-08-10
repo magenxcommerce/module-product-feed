@@ -1,0 +1,35 @@
+{
+    "name": "magenx/module-product-feed",
+    "description": "Product feed generation and delivery for Magento 2 — define feeds in the admin, filter the catalog with the standard condition widget, render XML/CSV/TSV/JSONL from a safe template language, publish on a schedule, and deliver by public URL, FTP/SFTP, the Google Merchant API, or a push catalog API such as Meta's. Backend-only: there is no storefront GraphQL surface, because feeds are an operator feature with no storefront consumer.",
+    "type": "magento2-module",
+    "license": "MIT",
+    "require": {
+        "php": "~8.3.0||~8.4.0||~8.5.0",
+        "ext-json": "*",
+        "ext-openssl": "*",
+        "magento/framework": "*",
+        "magento/module-store": "*",
+        "magento/module-catalog": "*",
+        "magento/module-catalog-inventory": "*",
+        "magento/module-catalog-widget": "*",
+        "magento/module-catalog-rule": "*",
+        "magento/module-eav": "*",
+        "magento/module-directory": "*",
+        "magento/module-review": "*",
+        "magento/module-backend": "*",
+        "magento/module-ui": "*",
+        "magento/module-cron": "*",
+        "magento/module-email": "*"
+    },
+    "suggest": {
+        "ext-ftp": "Required only for plain FTP delivery. Nothing else needs it: SFTP goes through Magento's own Filesystem\\Io\\Sftp adapter, and the Google and Meta destinations are plain HTTPS."
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Magenx\\ProductFeed\\": ""
+        }
+    }
+}

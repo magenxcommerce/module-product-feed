@@ -1,0 +1,117 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ *
+ * NOTE: this module has no GraphQL surface and must not grow one here. Feeds are
+ * an operator feature with no storefront consumer - the storefront never reads a
+ * feed, marketplaces do. If a storefront need ever appears, it belongs in a
+ * sibling Magenx_ProductFeedGraphQl module, per the house split.
+ -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+    <!-- ============================ Logging ============================ -->
+    <virtualType name="MagenxProductFeedLogHandler" type="Magento\Framework\Logger\Handler\Base">
+        <arguments>
+            <argument name="fileName" xsi:type="string">/var/log/magenx_product_feed.log</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="MagenxProductFeedLogger" type="Magento\Framework\Logger\Monolog">
+        <arguments>
+            <argument name="name" xsi:type="string">magenxProductFeed</argument>
+            <argument name="handlers" xsi:type="array">
+                <item name="system" xsi:type="object">MagenxProductFeedLogHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!-- ======================= Output writers ========================== -->
+    <!-- Serialize a stream of records (or a rendered template) to a file. A new
+         format is a class plus one <item> - never an edit to the runner. -->
+    <type name="Magenx\ProductFeed\Model\Export\WriterPool">
+        <arguments>
+            <argument name="writers" xsi:type="array">
+                <item name="xml" xsi:type="object">Magenx\ProductFeed\Model\Export\Writer\XmlWriter</item>
+                <item name="csv" xsi:type="object">Magenx\ProductFeed\Model\Export\Writer\CsvWriter</item>
+                <item name="tsv" xsi:type="object">Magenx\ProductFeed\Model\Export\Writer\TsvWriter</item>
+                <item name="jsonl" xsi:type="object">Magenx\ProductFeed\Model\Export\Writer\JsonlWriter</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- ====================== Delivery destinations ==================== -->
+    <!-- Two shapes behind one interface:
+           file-based  (file, ftp, sftp, google_datasource) consume the published file
+           push-based  (meta_batch) consume the record stream directly
+         A push deliverer must NEVER parse a generated file back apart - that is
+         why Runner emits records before serialization. -->
+    <type name="Magenx\ProductFeed\Model\Delivery\DelivererPool">
+        <arguments>
+            <argument name="deliverers" xsi:type="array">
+                <item name="file" xsi:type="object">Magenx\ProductFeed\Model\Delivery\FileDeliverer</item>
+                <item name="ftp" xsi:type="object">Magenx\ProductFeed\Model\Delivery\FtpDeliverer</item>
+                <item name="sftp" xsi:type="object">Magenx\ProductFeed\Model\Delivery\SftpDeliverer</item>
+                <item name="google_datasource" xsi:type="object">Magenx\ProductFeed\Model\Delivery\GoogleDataSourceDeliverer</item>
+                <item name="meta_batch" xsi:type="object">Magenx\ProductFeed\Model\Delivery\MetaCatalogBatchDeliverer</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Validation needs no di.xml wiring: the rule vocabulary is fixed by what
+         marketplaces actually check, so Model\Validation\Validator resolves types
+         through a match() rather than through a pool nobody would contribute to. -->
+
+    <!-- ===================== Logger injection ========================== -->
+    <type name="Magenx\ProductFeed\Cron\DispatchGeneration">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductFeedLogger</argument>
+        </arguments>
+    </type>
+    <type name="Magenx\ProductFeed\Cron\RetryDelivery">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductFeedLogger</argument>
+        </arguments>
+    </type>
+    <type name="Magenx\ProductFeed\Model\Export\Runner">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductFeedLogger</argument>
+        </arguments>
+    </type>
+    <type name="Magenx\ProductFeed\Model\Delivery\DeliveryManager">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductFeedLogger</argument>
+        </arguments>
+    </type>
+
+    <!-- ========================= Admin grid ============================ -->
+    <virtualType name="MagenxProductFeedGridCollection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">magenx_feed</argument>
+            <argument name="resourceModel" xsi:type="string">Magenx\ProductFeed\Model\ResourceModel\Feed</argument>
+        </arguments>
+    </virtualType>
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="magenx_product_feed_listing_data_source" xsi:type="string">MagenxProductFeedGridCollection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- =========================== CLI ================================= -->
+    <!-- Justified here (unlike the admin-button-only modules in this repo):
+         generating a feed is genuinely operator- and CI-facing, and the CLI is
+         how you export a catalog too large to finish inside a cron window. -->
+    <type name="Magento\Framework\Console\CommandListInterface">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="magenx_product_feed_list" xsi:type="object">Magenx\ProductFeed\Console\Command\ListCommand</item>
+                <item name="magenx_product_feed_generate" xsi:type="object">Magenx\ProductFeed\Console\Command\GenerateCommand</item>
+                <item name="magenx_product_feed_deliver" xsi:type="object">Magenx\ProductFeed\Console\Command\DeliverCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

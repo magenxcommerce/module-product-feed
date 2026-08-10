@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="magenx" translate="label" sortOrder="400">
+            <label>Magenx</label>
+        </tab>
+        <section id="magenx_product_feed" translate="label" type="text" sortOrder="420"
+                 showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+            <label>Product Feeds</label>
+            <tab>magenx</tab>
+            <resource>Magenx_ProductFeed::config</resource>
+
+            <group id="general" translate="label" type="text" sortOrder="10"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>General</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enabled</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Off by default. While this is <strong>No</strong> the cron jobs return immediately and no feed is generated or delivered, whatever the individual feeds say.]]></comment>
+                </field>
+            </group>
+
+            <group id="generation" translate="label" type="text" sortOrder="20"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Generation</label>
+                <field id="batch_size" translate="label comment" type="text" sortOrder="10"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Products per Batch</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment><![CDATA[Products loaded, rendered and written per batch. Each batch costs a fixed number of queries no matter what this is set to, so raising it trades memory for fewer round trips. Lower it if generation exhausts PHP memory on a catalog with large descriptions.]]></comment>
+                    <depends><field id="magenx_product_feed/general/enabled">1</field></depends>
+                </field>
+                <field id="max_execution_seconds" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Time Budget per Run (seconds)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment><![CDATA[Wall-clock budget for one cron tick. When it is used up the run saves its position and continues on the next tick, so a catalog larger than a single cron window still finishes. Keep it comfortably below the PHP <code>max_execution_time</code> of your cron process.]]></comment>
+                    <depends><field id="magenx_product_feed/general/enabled">1</field></depends>
+                </field>
+                <field id="validate_after_generation" translate="label comment" type="select" sortOrder="30"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Validate After Generation</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Check the generated feed against its own validation rules and record the findings. This is what turns a feed a marketplace silently rejects into one you can see is wrong.]]></comment>
+                    <depends><field id="magenx_product_feed/general/enabled">1</field></depends>
+                </field>
+                <field id="history_retention_days" translate="label comment" type="text" sortOrder="40"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Keep Run History (days)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment><![CDATA[Older rows are pruned by the dispatcher cron.]]></comment>
+                    <depends><field id="magenx_product_feed/general/enabled">1</field></depends>
+                </field>
+            </group>
+
+            <group id="google" translate="label comment" type="text" sortOrder="30"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Google Merchant Center</label>
+                <comment><![CDATA[Needed only for feeds delivered through the Google Merchant API. Downloading a feed or sending it by FTP uses none of this.<br/><br/><strong>Google's Content API for Shopping v2.1 shuts down on 18 August 2026</strong> and its endpoints then return <code>410 Gone</code>; this module targets the replacement Merchant API, so no migration is required.]]></comment>
+                <field id="merchant_id" translate="label comment" type="text" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Merchant ID</label>
+                    <comment><![CDATA[The numeric Merchant Center account ID that owns the data sources. Settable per website or store view, so different store views can submit to different Merchant Center accounts.]]></comment>
+                </field>
+                <field id="service_account_key" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Service Account Key File</label>
+                    <comment><![CDATA[File name of the Google service-account JSON key, resolved inside <code>var/magenx_feed/gmc/</code>. Upload it there by SSH or deployment, <strong>not</strong> into <code>pub/media</code> — that directory is web-served and the key grants programmatic access to your Merchant Center account. Treat it exactly like a password.]]></comment>
+                </field>
+            </group>
+
+            <group id="notifications" translate="label" type="text" sortOrder="40"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Email Notifications</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Notify on Failure</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="recipient" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Recipient Email</label>
+                    <validate>validate-email</validate>
+                    <comment><![CDATA[Leave empty to use the General Contact address.]]></comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <!-- The template id declared in etc/email_templates.xml MUST equal this
+                     field's full config path with "/" replaced by "_", i.e.
+                     magenx_product_feed_notifications_failure_template. Source\Email\Template
+                     builds its "(Default)" option from getTemplateLabel(str_replace('/', '_',
+                     $field->getPath())), and an id Email\Model\Template\Config does not know
+                     throws UnexpectedTemplateIdValueException. Layout::renderNonCachedElement()
+                     catches that outside developer mode and returns '' - so the whole config
+                     section renders BLANK, with only a line in var/log to explain it. -->
+                <field id="failure_template" translate="label comment" type="select" sortOrder="30"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Failure Email Template</label>
+                    <source_model>Magento\Config\Model\Config\Source\Email\Template</source_model>
+                    <comment><![CDATA[Sent through Magento's own Mail Sending Settings — this module configures no transport of its own.]]></comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+            </group>
+
+            <group id="cron" translate="label comment" type="text" sortOrder="50"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Cron</label>
+                <comment><![CDATA[These jobs run in Magento's <code>default</code> cron group on purpose. A dedicated group is never picked up on hosts that run <code>cron:run --group=</code> with an explicit list, which makes feeds silently stop generating while the CLI command still works perfectly by hand.]]></comment>
+                <field id="dispatch_schedule" translate="label comment" type="text" sortOrder="10"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Generation Dispatcher Schedule</label>
+                    <comment><![CDATA[Cron expression. This is <em>not</em> the schedule a feed generates on — each feed carries its own days and times, and this dispatcher only ticks and decides which are due. It must therefore run at least as often as your finest per-feed time granularity.]]></comment>
+                    <depends><field id="magenx_product_feed/general/enabled">1</field></depends>
+                </field>
+                <field id="deliver_schedule" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Delivery Retry Schedule</label>
+                    <comment><![CDATA[Cron expression for retrying deliveries that failed.]]></comment>
+                    <depends><field id="magenx_product_feed/general/enabled">1</field></depends>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

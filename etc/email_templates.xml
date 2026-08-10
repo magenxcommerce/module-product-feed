@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © MagenX. All rights reserved.
+ * SPDX-License-Identifier: MIT
+ *
+ * LOAD-BEARING: each template `id` here MUST equal the full config path of the
+ * system.xml field that selects it, with "/" replaced by "_".
+ *
+ *   field path  magenx_product_feed/notifications/failure_template
+ *   template id magenx_product_feed_notifications_failure_template
+ *
+ * Magento\Config\Model\Config\Source\Email\Template::toOptionArray() builds its
+ * "(Default)" entry as getTemplateLabel(str_replace('/', '_', $field->getPath())),
+ * and Email\Model\Template\Config::_getInfo() throws
+ * UnexpectedTemplateIdValueException for an id it does not know. Layout::
+ * renderNonCachedElement() catches that outside developer mode and returns '',
+ * so the ENTIRE config section renders blank - no fields, no error, only a
+ * `critical` line in var/log. The doubled path segment is core's own convention
+ * (cf. contact/email/email_template -> contact_email_email_template), not a typo.
+ *
+ * Renaming an id is only safe while nothing has been saved: a core_config_data
+ * row still holding the old id points at a template that no longer exists, and
+ * that fails at SEND time rather than at render time.
+ -->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Email:etc/email_templates.xsd">
+    <template id="magenx_product_feed_notifications_failure_template"
+              label="Product Feed Generation Failed"
+              file="feed_failure.html"
+              type="html"
+              module="Magenx_ProductFeed"
+              area="adminhtml"/>
+</config>
