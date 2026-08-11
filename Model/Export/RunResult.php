@@ -14,6 +14,7 @@ namespace Magenx\ProductFeed\Model\Export;
  * time budget and the run will continue where it left off. Only `failed`
  * indicates something went wrong.
  */
+// phpcs:ignore Magento2.PHP.FinalImplementation.FoundFinal -- internal immutable value object, not an extension point; nothing extends it and no di.xml preference targets it.
 final class RunResult
 {
     public function __construct(
@@ -27,21 +28,25 @@ final class RunResult
     ) {
     }
 
+    // phpcs:ignore Magento2.Functions.StaticFunction.StaticFunction -- named constructor on an immutable value object; not an interception point.
     public static function progressed(int $count, int $durationMs): self
     {
         return new self(false, false, $count, $durationMs, 'Partially generated; will continue on the next run.');
     }
 
+    // phpcs:ignore Magento2.Functions.StaticFunction.StaticFunction -- named constructor on an immutable value object; not an interception point.
     public static function finished(int $count, int $durationMs, string $publishedPath): self
     {
         return new self(true, false, $count, $durationMs, 'Feed generated.', $publishedPath);
     }
 
+    // phpcs:ignore Magento2.Functions.StaticFunction.StaticFunction -- named constructor on an immutable value object; not an interception point.
     public static function error(string $message, int $durationMs, int $count = 0): self
     {
         return new self(false, true, $count, $durationMs, $message);
     }
 
+    // phpcs:ignore Magento2.Functions.StaticFunction.StaticFunction -- named constructor on an immutable value object; not an interception point.
     public static function skipped(string $message): self
     {
         return new self(false, false, 0, 0, $message, null, true);

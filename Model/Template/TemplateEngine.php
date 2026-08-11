@@ -36,6 +36,7 @@ class TemplateEngine
      */
     public function compile(string $source): array
     {
+        // phpcs:ignore Magento2.Security.InsecureFunction.FoundWithAlternative -- in-memory cache key for compiled templates, not a security digest.
         $key = md5($source);
 
         return $this->compiled[$key] ??= $this->compiler->compile($source);

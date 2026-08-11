@@ -58,6 +58,7 @@ class ServiceAccountAuthenticator
      */
     public function getAccessToken(string $keyFileName): string
     {
+        // phpcs:ignore Magento2.Security.InsecureFunction.FoundWithAlternative -- cache key derived from a key file name, not a security digest.
         $cacheKey = md5($keyFileName);
         $cached = $this->tokenCache[$cacheKey] ?? null;
 

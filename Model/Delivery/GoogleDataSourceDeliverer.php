@@ -213,6 +213,7 @@ class GoogleDataSourceDeliverer implements DelivererInterface
             return (string) __('The feed has no public URL for Google to fetch.');
         }
 
+        // phpcs:ignore Magento2.Functions.DiscouragedFunction.Discouraged -- parsing a configured endpoint URL, not a store URL.
         $host = (string) parse_url($url, PHP_URL_HOST);
         if ($host === '') {
             return (string) __('The feed URL "%1" is not a valid absolute URL.', $url);

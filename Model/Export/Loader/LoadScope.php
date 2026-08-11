@@ -14,6 +14,7 @@ namespace Magenx\ProductFeed\Model\Export\Loader;
  * the sku list for a set of ids, once per loader would put five redundant
  * lookups into every batch.
  */
+// phpcs:ignore Magento2.PHP.FinalImplementation.FoundFinal -- internal immutable value object, not an extension point; nothing extends it and no di.xml preference targets it.
 final class LoadScope
 {
     /**

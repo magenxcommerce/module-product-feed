@@ -91,6 +91,7 @@ abstract class AbstractTransferDeliverer implements DelivererInterface
     {
         $configured = $context->getString('remote_filename');
 
+        // phpcs:ignore Magento2.Functions.DiscouragedFunction.Discouraged -- string-level basename on a remote path segment.
         return $configured !== '' ? basename($configured) : $context->filename;
     }
 

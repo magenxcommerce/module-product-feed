@@ -223,6 +223,7 @@ class FeedFilesystem
      */
     public function getGoogleKeyPath(string $configuredFileName): ?string
     {
+        // phpcs:ignore Magento2.Functions.DiscouragedFunction.Discouraged -- string-level basename on a generated feed filename.
         $name = basename(trim($configuredFileName));
         if ($name === '' || $name === '.' || $name === '..') {
             return null;
@@ -251,6 +252,7 @@ class FeedFilesystem
      */
     private function sanitizeSegment(string $segment): string
     {
+        // phpcs:ignore Magento2.Functions.DiscouragedFunction.Discouraged -- string-level basename on a generated feed filename.
         $segment = basename(trim($segment));
         $segment = (string) preg_replace('/[^A-Za-z0-9._-]/', '_', $segment);
         $segment = ltrim($segment, '.');

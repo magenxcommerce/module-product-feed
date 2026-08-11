@@ -15,6 +15,7 @@ namespace Magenx\ProductFeed\Model\Template;
  *
  * @phpstan-type FilterCall array{0: string, 1: array<int, string|float|int>}
  */
+// phpcs:ignore Magento2.PHP.FinalImplementation.FoundFinal -- internal immutable value object, not an extension point; nothing extends it and no di.xml preference targets it.
 final class Expression
 {
     /**
