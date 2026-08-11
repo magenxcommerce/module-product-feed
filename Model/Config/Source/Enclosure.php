@@ -35,6 +35,7 @@ class Enclosure implements OptionSourceInterface
      * majority of consumers expect - failing open to "no enclosure" would instead
      * silently corrupt every row containing the delimiter.
      */
+    // phpcs:ignore Magento2.Functions.StaticFunction.StaticFunction -- named constructor on an immutable value object; not an interception point.
     public static function toCharacter(string $code): string
     {
         if (array_key_exists($code, self::CHARACTERS)) {

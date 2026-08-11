@@ -53,7 +53,9 @@ class Filters
             'remove' => str_replace($this->arg($args, 0, ''), '', $this->str($value)),
             'append' => $this->str($value) . $this->arg($args, 0, ''),
             'prepend' => $this->arg($args, 0, '') . $this->str($value),
+            // phpcs:ignore Magento2.Functions.DiscouragedFunction.DiscouragedWithAlternative -- a template filter primitive; Escaper is store-scoped and not available here.
             'escape' => htmlspecialchars($this->str($value), ENT_QUOTES | ENT_XML1, 'UTF-8'),
+            // phpcs:ignore Magento2.Functions.DiscouragedFunction.Discouraged -- feed output is not HTML; entities must be decoded back to raw text.
             'html_entity_decode' => html_entity_decode($this->str($value), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             'nl2br', 'newline_to_br' => nl2br($this->str($value)),
             'strip_newlines' => str_replace(["\r\n", "\r", "\n"], ' ', $this->str($value)),
@@ -139,6 +141,7 @@ class Filters
         // a product description field.
         $value = (string) preg_replace('#<(script|style)\b[^>]*>.*?</\1>#is', ' ', $value);
         $value = strip_tags($value);
+        // phpcs:ignore Magento2.Functions.DiscouragedFunction.Discouraged -- feed output is not HTML; entities must be decoded back to raw text.
         $value = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
         return $this->clean($value);

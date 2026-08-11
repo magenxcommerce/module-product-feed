@@ -44,6 +44,7 @@ class Delimiter implements OptionSourceInterface
      * characters an older row may hold - a feed must keep generating rather than
      * fail on a value it does not recognise.
      */
+    // phpcs:ignore Magento2.Functions.StaticFunction.StaticFunction -- named constructor on an immutable value object; not an interception point.
     public static function toCharacter(string $code): string
     {
         if (isset(self::CHARACTERS[$code])) {

@@ -15,6 +15,7 @@ namespace Magenx\ProductFeed\Model\Delivery;
  * configuration state rather than an error, and reporting it as a failure trains
  * merchants to ignore red feeds.
  */
+// phpcs:ignore Magento2.PHP.FinalImplementation.FoundFinal -- internal immutable value object, not an extension point; nothing extends it and no di.xml preference targets it.
 final class DeliveryResult
 {
     public const STATUS_SUCCESS = 'success';
@@ -34,6 +35,7 @@ final class DeliveryResult
     /**
      * @param array<string, mixed> $details
      */
+    // phpcs:ignore Magento2.Functions.StaticFunction.StaticFunction -- named constructor on an immutable value object; not an interception point.
     public static function success(string $message, array $details = []): self
     {
         return new self(self::STATUS_SUCCESS, $message, $details);
@@ -42,11 +44,13 @@ final class DeliveryResult
     /**
      * @param array<string, mixed> $details
      */
+    // phpcs:ignore Magento2.Functions.StaticFunction.StaticFunction -- named constructor on an immutable value object; not an interception point.
     public static function error(string $message, array $details = []): self
     {
         return new self(self::STATUS_ERROR, $message, $details);
     }
 
+    // phpcs:ignore Magento2.Functions.StaticFunction.StaticFunction -- named constructor on an immutable value object; not an interception point.
     public static function skipped(string $message): self
     {
         return new self(self::STATUS_SKIPPED, $message);

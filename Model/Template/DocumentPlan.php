@@ -13,6 +13,7 @@ namespace Magenx\ProductFeed\Model\Template;
  * @see DocumentSplitter for why a feed template is split rather than rendered
  *      whole.
  */
+// phpcs:ignore Magento2.PHP.FinalImplementation.FoundFinal -- internal immutable value object, not an extension point; nothing extends it and no di.xml preference targets it.
 final class DocumentPlan
 {
     /**
