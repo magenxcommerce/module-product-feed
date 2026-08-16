@@ -49,6 +49,7 @@ class GoogleDataSourceDeliverer implements DelivererInterface
         '/^10\./',
         '/^192\.168\./',
         '/^172\.(1[6-9]|2\d|3[01])\./',
+        '/^169\.254\./',
         '/\.local$/i',
         '/\.internal$/i',
     ];

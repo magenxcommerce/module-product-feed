@@ -40,7 +40,8 @@ class TsvWriter extends CsvWriter
     {
         $cells = [];
         foreach ($values as $value) {
-            $cells[] = str_replace(["\r\n", "\r", "\n", "\t"], ' ', $value);
+            $value = str_replace(["\r\n", "\r", "\n", "\t"], ' ', $value);
+            $cells[] = $this->neutralizeFormula($value);
         }
 
         return implode("\t", $cells) . "\n";

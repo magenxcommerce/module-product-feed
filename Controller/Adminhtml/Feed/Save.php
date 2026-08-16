@@ -13,11 +13,12 @@ use Magenx\ProductFeed\Model\Template\TemplateEngine;
 use Magenx\ProductFeed\Model\FeedFactory;
 use Magenx\ProductFeed\Model\ResourceModel\Feed as FeedResource;
 use Magento\Backend\App\Action\Context;
+use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Framework\Controller\ResultFactory;
 use Magento\Framework\Controller\ResultInterface;
 use Magento\Framework\Registry;
 
-class Save extends Feed
+class Save extends Feed implements HttpPostActionInterface
 {
     public function __construct(
         Context $context,

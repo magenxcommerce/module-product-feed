@@ -192,28 +192,6 @@ class FeedFilesystem
     }
 
     /**
-     * @throws NoSuchEntityException
-     * @throws FileSystemException
-     */
-    public function isPublished(Feed $feed, string $filename): bool
-    {
-        return $this->getMediaWriter()->isExist($this->getRelativePath($feed, $filename));
-    }
-
-    /**
-     * @throws FileSystemException
-     */
-    public function getFileSize(string $relativePath): int
-    {
-        $writer = $this->getMediaWriter();
-        if (!$writer->isExist($relativePath)) {
-            return 0;
-        }
-
-        return (int) ($writer->stat($relativePath)['size'] ?? 0);
-    }
-
-    /**
      * Absolute path of the Google service-account key inside var/.
      *
      * The configured value is a file NAME; it is basename()d here so a traversal

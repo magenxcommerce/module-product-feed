@@ -103,6 +103,25 @@ class CsvWriter implements WriterInterface
             $value = str_replace($delimiter, ' ', $value);
         }
 
+        return $this->neutralizeFormula($value);
+    }
+
+    /**
+     * Defuse CSV/formula injection.
+     *
+     * A value beginning with =, +, -, @, tab or CR is executed as a formula by
+     * Excel/Sheets when the file is opened rather than displayed as text - a
+     * product review or attribute value is enough to reach this, since neither
+     * is validated as "safe spreadsheet text" anywhere upstream. Prefixing with
+     * an apostrophe forces text interpretation without changing the visible
+     * value in any spreadsheet application.
+     */
+    protected function neutralizeFormula(string $value): string
+    {
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+
         return $value;
     }
 

@@ -28,7 +28,6 @@
                     <resource id="Magenx_ProductFeed::feeds" title="Product Feeds" sortOrder="90">
                         <resource id="Magenx_ProductFeed::feed" title="Feeds" sortOrder="10"/>
                         <resource id="Magenx_ProductFeed::generate" title="Generate Feeds" sortOrder="20"/>
-                        <resource id="Magenx_ProductFeed::deliver" title="Deliver Feeds" sortOrder="30"/>
                     </resource>
                 </resource>
                 <resource id="Magento_Backend::stores">

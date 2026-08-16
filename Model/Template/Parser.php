@@ -61,11 +61,6 @@ class Parser
     /** Fields that require the stock join. */
     private const STOCK_FIELDS = ['qty', 'is_in_stock', 'stock_status', 'is_salable', 'stock'];
 
-    public function __construct(
-        private readonly Compiler $compiler
-    ) {
-    }
-
     /**
      * @param array<int, array<string, mixed>> $nodes
      */
@@ -102,25 +97,6 @@ class Parser
             $state['configurable'],
             $state['url']
         );
-    }
-
-    /**
-     * Convenience: analyze the field-map expressions of a record-based feed, which
-     * has no template body.
-     *
-     * @param array<int, array{column?: string, value?: string}> $fieldMap
-     */
-    public function analyzeFieldMap(array $fieldMap): Requirements
-    {
-        $source = '';
-        foreach ($fieldMap as $row) {
-            $value = (string) ($row['value'] ?? '');
-            if ($value !== '') {
-                $source .= $value . "\n";
-            }
-        }
-
-        return $this->analyze($this->compiler->compile($source));
     }
 
     /**

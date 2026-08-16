@@ -103,15 +103,16 @@ class MetaCatalogBatchDeliverer implements DelivererInterface, RecordConsumerInt
         }
 
         // A GET of the catalog node itself: it proves the id exists and the token
-        // can read it, and it writes nothing.
+        // can read it, and it writes nothing. The token travels as a bearer header
+        // rather than a query parameter so it never lands in access/proxy logs.
         $curl = $this->curlFactory->create();
         $curl->setTimeout(30);
+        $curl->addHeader('Authorization', 'Bearer ' . $context->getString('access_token'));
 
         $url = sprintf(
-            'https://graph.facebook.com/%s/%s?fields=id,name&access_token=%s',
+            'https://graph.facebook.com/%s/%s?fields=id,name',
             self::API_VERSION,
-            rawurlencode($context->getString('catalog_id')),
-            rawurlencode($context->getString('access_token'))
+            rawurlencode($context->getString('catalog_id'))
         );
 
         try {

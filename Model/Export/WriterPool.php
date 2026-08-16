@@ -48,17 +48,4 @@ class WriterPool
 
         return $this->writers[$format];
     }
-
-    public function has(string $format): bool
-    {
-        return isset($this->writers[$format]);
-    }
-
-    /**
-     * @return string[]
-     */
-    public function getFormats(): array
-    {
-        return array_keys($this->writers);
-    }
 }
