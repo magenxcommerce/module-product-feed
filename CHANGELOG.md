@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/magenxcommerce/module-product-feed/compare/v1.0.0...v1.0.1) (2026-08-16)
+
+
+### Bug Fixes
+
+* Security, dead-code and validation fixes from a full module review ([#5](https://github.com/magenxcommerce/module-product-feed/issues/5)) ([039a1bf](https://github.com/magenxcommerce/module-product-feed/commit/039a1bf0bf5ec226828865adf4be4cc346e4ad49))
+
 ## 1.0.0 (2026-08-11)
 
 
