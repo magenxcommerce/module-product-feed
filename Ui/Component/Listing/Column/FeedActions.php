@@ -71,6 +71,7 @@ class FeedActions extends Column
                             . 'or will finish on its own from cron.'
                         ),
                     ],
+                    'post' => true,
                 ],
                 'delete' => [
                     'href' => $this->urlBuilder->getUrl(self::URL_DELETE, ['feed_id' => $feedId]),

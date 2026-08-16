@@ -22,15 +22,21 @@
                  condition tree be pushed down into one SQL WHERE clause instead of
                  instantiating and validating every product in PHP. -->
             <module name="Magento_CatalogWidget"/>
-            <!-- CatalogRule: Magento\Rule\Model\AbstractModel lives in the framework,
-                 but the admin condition-tree JS and the chooser blocks come from here. -->
+            <!-- CatalogRule: the admin condition-tree JS and the chooser blocks come
+                 from here. -->
             <module name="Magento_CatalogRule"/>
+            <!-- Rule: Magento\Rule\Model\AbstractModel and Magento\Rule\Block\Conditions,
+                 which Feed / Feed's resource model / collection / edit form extend. -->
+            <module name="Magento_Rule"/>
             <module name="Magento_Eav"/>
             <!-- Directory: currency conversion for the price filters. -->
             <module name="Magento_Directory"/>
             <!-- Review: the {% for review in context.reviews %} loop. -->
             <module name="Magento_Review"/>
             <module name="Magento_Backend"/>
+            <!-- Config: Magento\Config\Model\Config\Source\Yesno / Source\Email\Template,
+                 used as system.xml source models. -->
+            <module name="Magento_Config"/>
             <module name="Magento_Ui"/>
             <module name="Magento_Cron"/>
             <module name="Magento_Email"/>

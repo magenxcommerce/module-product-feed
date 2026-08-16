@@ -13,10 +13,12 @@
         "magento/module-catalog-inventory": "*",
         "magento/module-catalog-widget": "*",
         "magento/module-catalog-rule": "*",
+        "magento/module-rule": "*",
         "magento/module-eav": "*",
         "magento/module-directory": "*",
         "magento/module-review": "*",
         "magento/module-backend": "*",
+        "magento/module-config": "*",
         "magento/module-ui": "*",
         "magento/module-cron": "*",
         "magento/module-email": "*"

@@ -12,6 +12,7 @@ use Magenx\ProductFeed\Model\FeedFactory;
 use Magenx\ProductFeed\Model\FeedManager;
 use Magenx\ProductFeed\Model\ResourceModel\Feed as FeedResource;
 use Magento\Backend\App\Action\Context;
+use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Framework\Controller\ResultFactory;
 use Magento\Framework\Controller\ResultInterface;
 use Magento\Framework\Registry;
@@ -25,7 +26,7 @@ use Magento\Framework\Registry;
  * run whose state they cannot see - whereas a slice always returns, reports what
  * it did, and the rest happens on cron.
  */
-class Generate extends Feed
+class Generate extends Feed implements HttpPostActionInterface
 {
     public const ADMIN_RESOURCE = 'Magenx_ProductFeed::generate';
 

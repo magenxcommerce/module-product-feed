@@ -17,6 +17,8 @@ use Magenx\ProductFeed\Model\Template\DocumentSplitter;
 use Magenx\ProductFeed\Model\Template\RenderContext;
 use Magenx\ProductFeed\Model\Template\Requirements;
 use Magenx\ProductFeed\Model\Template\TemplateEngine;
+use Magenx\ProductFeed\Model\Validation\ValidationReport;
+use Magenx\ProductFeed\Model\Validation\Validator;
 use Magento\Framework\App\Area;
 use Magento\Framework\Lock\LockManagerInterface;
 use Magento\Framework\Stdlib\DateTime\DateTime;
@@ -72,6 +74,7 @@ class Runner
         private readonly FeedFilesystem $feedFilesystem,
         private readonly FeedResource $feedResource,
         private readonly FeedHistory $feedHistory,
+        private readonly Validator $validator,
         private readonly LockManagerInterface $lockManager,
         private readonly Emulation $emulation,
         private readonly StoreManagerInterface $storeManager,
@@ -165,6 +168,20 @@ class Runner
             $deadline = $startedAt + $this->config->getMaxExecutionSeconds($storeId);
             $completed = true;
 
+            // Validation only makes sense in record mode: a free-form XML template
+            // has no per-column record to check a rule against. The report is kept
+            // in memory for THIS tick only and discarded if the tick does not
+            // complete the run - a catalog needing several cron ticks reports only
+            // the last tick's batches. Accepted: it mirrors how the TYPE_GENERATE
+            // history row itself is only written on completion, not per tick, and
+            // avoids persisting partial findings across ticks (which would need a
+            // schema change).
+            $validationRules = $feed->getValidationRules();
+            $shouldValidate = $plan->isRecordMode
+                && $validationRules !== []
+                && $this->config->shouldValidateAfterGeneration($storeId);
+            $validationReport = $shouldValidate ? new ValidationReport() : null;
+
             while (true) {
                 $collection = $this->collectionBuilder->createPage($feed, $plan->requirements, $cursor, $batchSize);
                 $products = array_values($collection->getItems());
@@ -173,7 +190,15 @@ class Runner
                     break;
                 }
 
-                $chunk = $this->processBatch($feed, $plan, $products, $scopeTemplate, $consumers);
+                $chunk = $this->processBatch(
+                    $feed,
+                    $plan,
+                    $products,
+                    $scopeTemplate,
+                    $consumers,
+                    $validationRules,
+                    $validationReport
+                );
                 $this->feedFilesystem->appendWork($feed, $filename, $chunk);
 
                 $written += count($products);
@@ -238,6 +263,24 @@ class Runner
                 $duration
             );
 
+            if ($validationReport !== null) {
+                $status = match (true) {
+                    $validationReport->hasErrors() => 'error',
+                    $validationReport->countBySeverity(Validator::SEVERITY_WARNING) > 0 => 'warning',
+                    default => 'success',
+                };
+
+                $this->feedHistory->record(
+                    $feedId,
+                    FeedHistory::TYPE_VALIDATE,
+                    $status,
+                    $validationReport->summarize(),
+                    $written,
+                    null,
+                    $validationReport->toArray()
+                );
+            }
+
             return RunResult::finished($written, $duration, $published);
         } finally {
             $this->emulation->stopEnvironmentEmulation();
@@ -248,13 +291,16 @@ class Runner
      * @param \Magento\Catalog\Model\Product[] $products
      * @param array<string, mixed> $scopeTemplate
      * @param RecordConsumerInterface[] $consumers
+     * @param array<int, array<string, mixed>> $validationRules
      */
     private function processBatch(
         Feed $feed,
         ExportPlan $plan,
         array $products,
         array $scopeTemplate,
-        array $consumers
+        array $consumers,
+        array $validationRules = [],
+        ?ValidationReport $validationReport = null
     ): string {
         $productIds = [];
         $skusById = [];
@@ -275,7 +321,7 @@ class Runner
         $records = $this->dataLoader->buildRecords($products, $plan->requirements, $scope);
 
         return $plan->isRecordMode
-            ? $this->renderRecords($feed, $plan, $records, $scopeTemplate, $consumers)
+            ? $this->renderRecords($feed, $plan, $records, $scopeTemplate, $consumers, $validationRules, $validationReport)
             : $this->renderTemplateItems($feed, $plan, $records, $scopeTemplate);
     }
 
@@ -288,13 +334,16 @@ class Runner
      * @param array<int, array<string, mixed>> $records
      * @param array<string, mixed> $scopeTemplate
      * @param RecordConsumerInterface[] $consumers
+     * @param array<int, array<string, mixed>> $validationRules
      */
     private function renderRecords(
         Feed $feed,
         ExportPlan $plan,
         array $records,
         array $scopeTemplate,
-        array $consumers
+        array $consumers,
+        array $validationRules = [],
+        ?ValidationReport $validationReport = null
     ): string {
         $writer = $this->writerPool->get($feed->getFormat());
         $out = '';
@@ -306,6 +355,10 @@ class Runner
             $row = [];
             foreach ($plan->columns as $column => $nodes) {
                 $row[$column] = $this->templateEngine->renderCompiled($nodes, $context);
+            }
+
+            if ($validationReport !== null) {
+                $this->validator->validateRecord($validationRules, $row, $validationReport);
             }
 
             $batch[] = $row;
