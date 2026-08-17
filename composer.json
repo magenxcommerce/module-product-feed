@@ -1,6 +1,7 @@
 {
     "name": "magenxcommerce/module-product-feed",
     "description": "Product feed generation and delivery for Magento 2 — define feeds in the admin, filter the catalog with the standard condition widget, render XML/CSV/TSV/JSONL from a safe template language, publish on a schedule, and deliver by public URL, FTP/SFTP, the Google Merchant API, or a push catalog API such as Meta's. Backend-only: there is no storefront GraphQL surface, because feeds are an operator feature with no storefront consumer.",
+    "version": "1.0.1",
     "type": "magento2-module",
     "license": "MIT",
     "require": {
