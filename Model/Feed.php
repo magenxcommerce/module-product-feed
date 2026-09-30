@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace Magenx\ProductFeed\Model;
 
+use Magenx\ProductFeed\Model\Export\Writer\ValueTyper;
 use Magenx\ProductFeed\Model\ResourceModel\Feed as FeedResource;
 use Magento\CatalogWidget\Model\Rule\Condition\CombineFactory;
 use Magento\Framework\Api\AttributeValueFactory;
@@ -57,6 +58,15 @@ class Feed extends AbstractModel
     public const FORMAT_TSV = 'tsv';
     public const FORMAT_JSONL = 'jsonl';
 
+    public const COMPRESSION_NONE = 'none';
+    public const COMPRESSION_GZIP = 'gzip';
+
+    /**
+     * Product types a cart accepts by sku alone, with no option selections.
+     * Used by the purchasable-only filter.
+     */
+    public const PURCHASABLE_TYPES = ['simple', 'virtual', 'downloadable'];
+
     /**
      * Formats whose output is one record per line, and which can therefore feed a
      * push catalog API directly. A free-form XML template has arbitrary nesting
@@ -67,6 +77,11 @@ class Feed extends AbstractModel
     protected $_eventPrefix = 'magenx_product_feed';
 
     protected $_eventObject = 'feed';
+
+    /** @var array<string, string>|null */
+    private ?array $columnTypes = null;
+
+    private string $columnTypesSource = '';
 
     public function __construct(
         private readonly CombineFactory $combineFactory,
@@ -179,6 +194,57 @@ class Feed extends AbstractModel
         $decoded = json_decode($raw, true);
 
         return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * Declared JSON type per column, from the optional `type` on each field map
+     * row. Columns without one are strings.
+     *
+     * @return array<string, string> column => ValueTyper::TYPE_*
+     */
+    public function getColumnTypes(): array
+    {
+        // Read once per record by the writer, so memoised against the raw map:
+        // decoding the field map JSON per product would be pure waste.
+        $raw = (string) $this->getData('field_map');
+        if ($this->columnTypes !== null && $this->columnTypesSource === $raw) {
+            return $this->columnTypes;
+        }
+
+        $types = [];
+        foreach ($this->getFieldMap() as $row) {
+            $column = trim((string) ($row['column'] ?? ''));
+            if ($column !== '') {
+                $types[$column] = ValueTyper::normalizeType($row['type'] ?? null);
+            }
+        }
+
+        $this->columnTypesSource = $raw;
+
+        return $this->columnTypes = $types;
+    }
+
+    /**
+     * Leave an empty column out of a JSON record instead of writing "".
+     *
+     * Delimited formats cannot do this - every row must carry every column - so
+     * it only affects JSONL.
+     */
+    public function shouldOmitEmpty(): bool
+    {
+        return (bool) $this->getData('omit_empty');
+    }
+
+    public function isPurchasableOnly(): bool
+    {
+        return (bool) $this->getData('purchasable_only');
+    }
+
+    public function getCompression(): string
+    {
+        return $this->getData('compression') === self::COMPRESSION_GZIP
+            ? self::COMPRESSION_GZIP
+            : self::COMPRESSION_NONE;
     }
 
     /**

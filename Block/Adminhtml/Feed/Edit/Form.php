@@ -148,6 +148,17 @@ class Form extends Generic
             ),
         ]);
 
+        $fieldset->addField('purchasable_only', 'select', [
+            'name' => 'purchasable_only',
+            'label' => __('Purchasable Products Only'),
+            'values' => $this->yesNo->toOptionArray(),
+            'note' => __(
+                'Export only enabled simple, virtual and downloadable products - the rows a cart accepts by '
+                . 'sku alone. Configurable, bundle and grouped parents are skipped and their children kept. '
+                . 'Required for agentic checkout, which adds exactly the item id the feed lists.'
+            ),
+        ]);
+
         $fieldset->addField('is_active', 'select', [
             'name' => 'is_active',
             'label' => __('Active'),
@@ -190,9 +201,33 @@ class Form extends Generic
             'label' => __('Field Mapping (JSON)'),
             'style' => 'height: 14em; font-family: monospace;',
             'note' => __(
-                'For CSV / TSV / JSONL feeds: a JSON array of {"column": "...", "value": "..."}, '
-                . 'where value is a template expression. This is also what a catalog-API push sends.'
+                'For CSV / TSV / JSONL feeds: a JSON array of {"column": "...", "value": "...", "type": "..."}, '
+                . 'where value is a template expression. This is also what a catalog-API push sends. '
+                . 'The optional type is string (default), bool, int, number, json or list: JSONL writes '
+                . 'real booleans, numbers, objects and arrays for them; CSV / TSV write bool as true / false '
+                . 'and a list as one comma-separated cell. Choosing the "AI / agentic shopping" channel with '
+                . 'this and the template left empty fills in the OpenAI (ACP) product feed mapping on save.'
             ),
+        ]);
+
+        $fieldset->addField('omit_empty', 'select', [
+            'name' => 'omit_empty',
+            'label' => __('Omit Empty Values (JSONL)'),
+            'values' => $this->yesNo->toOptionArray(),
+            'note' => __(
+                'Leave a column that rendered empty out of the JSON record instead of writing "". '
+                . 'The agentic-commerce feed requires this: an empty string is not "unknown" to it.'
+            ),
+        ]);
+
+        $fieldset->addField('compression', 'select', [
+            'name' => 'compression',
+            'label' => __('Compression'),
+            'values' => [
+                ['value' => Feed::COMPRESSION_NONE, 'label' => __('None')],
+                ['value' => Feed::COMPRESSION_GZIP, 'label' => __('gzip (.gz appended to the file name)')],
+            ],
+            'note' => __('gzip is published atomically like the plain file, under the file name plus .gz.'),
         ]);
 
         $fieldset->addField('csv_delimiter', 'select', [
@@ -318,7 +353,10 @@ class Form extends Generic
             'note' => __(
                 'A JSON array of {"field", "type", "severity", "message"} plus any rule parameters. '
                 . 'Types: required, max_length, min_length, start_with, end_with, is_one_of, alphanumeric, '
-                . 'ascii, unicode, numeric, without_html.'
+                . 'ascii, unicode, numeric, without_html, regex (pattern), gtin, url, money (allow_zero), '
+                . 'boolean, integer (min, max), decimal (min, max, decimals), json_object (keys), '
+                . 'required_if (other, equals), only_if (other, equals), less_than_field (other), '
+                . 'not_equal_field (other), unique, variant_group (group_by). See the README for examples.'
             ),
         ]);
     }

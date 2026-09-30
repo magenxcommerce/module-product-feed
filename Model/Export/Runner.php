@@ -162,6 +162,7 @@ class Runner
                 'websiteId' => (int) $store->getWebsiteId(),
                 'mediaBaseUrl' => $store->getBaseUrl(\Magento\Framework\UrlInterface::URL_TYPE_MEDIA),
                 'currency' => (string) $store->getBaseCurrencyCode(),
+                'store' => $this->buildStoreContext($storeId, (string) $store->getFrontendName()),
             ];
 
             $batchSize = $this->config->getBatchSize($storeId);
@@ -239,6 +240,7 @@ class Runner
             }
 
             $published = $this->feedFilesystem->publish($feed, $filename);
+            $publishedName = $this->feedFilesystem->getPublishedName($feed, $filename);
             $duration = $this->elapsedMs($startedAt);
 
             $this->feedResource->updateRunState($feedId, [
@@ -249,7 +251,8 @@ class Runner
                 // Recorded so delivery targets the file that was actually written.
                 // Re-rendering a date-stamped filename at delivery time would look
                 // for tomorrow's file on a run that finished just before midnight.
-                'last_filename' => $filename,
+                // The published name, which carries .gz for a compressed feed.
+                'last_filename' => $publishedName,
                 'cursor_position' => null,
                 'last_error' => null,
             ]);
@@ -409,11 +412,31 @@ class Runner
                     'categories' => $record['categories'] ?? [],
                     'date' => $this->dateTime->gmtDate('Y-m-d'),
                     'time' => $this->dateTime->gmtDate('Y-m-d H:i:s'),
+                    // The code prices are exported in, so a money column can read
+                    // "{{ product.final_price | price }} {{ context.currency }}".
+                    'currency' => (string) $scopeTemplate['currency'],
+                    'store' => $scopeTemplate['store'] ?? [],
                 ],
             ],
             (string) $scopeTemplate['currency'],
             (int) $scopeTemplate['storeId']
         );
+    }
+
+    /**
+     * context.store.*: seller facts from configuration, with the store view's own
+     * name as the last fallback for the seller name.
+     *
+     * @return array<string, string>
+     */
+    private function buildStoreContext(int $storeId, string $frontendName): array
+    {
+        $store = $this->config->getAgenticContext($storeId);
+        if ($store['name'] === '') {
+            $store['name'] = trim($frontendName);
+        }
+
+        return $store;
     }
 
     private function renderHeader(Feed $feed, ExportPlan $plan, string $currency): string

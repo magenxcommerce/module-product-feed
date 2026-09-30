@@ -99,6 +99,7 @@ class Filters
             'first' => $this->firstOf($value),
             'last' => $this->lastOf($value),
             'count', 'size' => (string) count($this->arr($value)),
+            'slice' => $this->slice($value, (int) $this->arg($args, 0, 0), $this->arg($args, 1, null)),
             'join' => implode((string) $this->arg($args, 0, ','), array_map([$this, 'str'], $this->arr($value))),
 
             // ---- url -----------------------------------------------------
@@ -249,6 +250,21 @@ class Filters
         // An empty list must yield an empty value, never a fatal: a product with no
         // gallery images is ordinary, and it must not abort the whole export.
         return $array === [] ? '' : reset($array);
+    }
+
+    /**
+     * Part of a list: {{ product.gallery | slice: 1 }} is every image but the
+     * first, which is what an "additional images" column wants.
+     *
+     * @return array<int, mixed>
+     */
+    private function slice(mixed $value, int $offset, mixed $length): array
+    {
+        return array_slice(
+            array_values($this->arr($value)),
+            $offset,
+            $length === null || $length === '' ? null : (int) $length
+        );
     }
 
     private function lastOf(mixed $value): mixed

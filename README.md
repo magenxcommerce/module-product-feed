@@ -6,8 +6,9 @@
 Product feed generation and delivery for Magento 2.4.8 — define feeds in the
 admin, filter the catalog with the standard condition widget, render XML / CSV /
 TSV / JSONL from a safe template language, publish on a schedule, and deliver by
-public URL, FTP/SFTP, the **Google Merchant API**, or a **direct catalog-API
-push**.
+public URL, FTP/SFTP, the **Google Merchant API**, a **direct catalog-API
+push**, or the **OpenAI Agentic Commerce Protocol (ACP)** product feed — by SFTP
+file upload or the ACP Products API. See [Agentic commerce (OpenAI / ACP)](#agentic-commerce-openai--acp).
 
 ## Why this exists
 
@@ -52,6 +53,7 @@ does not "fix" the missing module.
 | `magenx_product_feed/generation/history_retention_days` | `30` | Rolling prune of `magenx_feed_history`. |
 | `magenx_product_feed/google/merchant_id` | — | Numeric Merchant Center account ID. Per website / store view. |
 | `magenx_product_feed/google/service_account_key` | — | **File name** inside `var/magenx_feed/gmc/`, not a path. |
+| `magenx_product_feed/agentic/*` | — | Seller facts for the OpenAI feed, per store view: seller name, fallback brand, headless storefront URL, privacy / terms / return policy URLs, returns accepted + window, checkout opt-in. Exposed to templates as `context.store.*`. |
 | `magenx_product_feed/notifications/*` | off | Failure email, sent through Magento's own Mail Sending Settings. |
 | `magenx_product_feed/cron/dispatch_schedule` | `*/5 * * * *` | Dispatcher tick, **not** a feed's schedule. |
 | `magenx_product_feed/cron/deliver_schedule` | `*/15 * * * *` | Delivery retry. |
@@ -76,13 +78,25 @@ smaller door.
 {{ product.inventory:warehouse_b }}
 {% if product.qty > 0 %}in stock{% else %}out of stock{% endif %}
 {% for tp in product.tier_prices %}{{ tp.quantity }}:{{ tp.price }}{% endfor %}
+{{ product.final_price | price }} {{ context.currency }}      "59.99 USD"
+{{ product.gallery | slice: 1 | json }}   every image but the first, as a JSON list
+{{ product.variant_dict | json }}         {"Color":"Black","Size":"10"}
 ```
+
+Beyond attributes, a product record carries `url`, prices (`regular_price`,
+`final_price`, `min_price`, `max_price`), stock (`qty`, `is_in_stock`,
+`stock_status`), `category` / `categories`, `gallery` / `images` / `image`,
+`reviews_count` / `rating_summary`, `parent`, and for a configurable's child
+`variant_group_id` (the parent sku), `variant_dict` and `configurable_attributes`
+(`[{code, label, value}]`, the parent's super attributes in its order, store-view
+labels). `context` holds `date`, `time`, `currency` and `store` (the
+`magenx_product_feed/agentic/*` settings).
 
 Filters: `lowercase uppercase capitalize replace remove append prepend escape
 html_entity_decode nl2br strip_newlines stripHtml stripStyleTag clean trim ltrim
 rtrim truncate truncatewords ifEmpty dateFormat json ceil floor round
-numberFormat price convert plus minus times divided_by modulo first last count
-join secure unsecure`. An unknown filter passes the value through and logs once,
+numberFormat price convert plus minus times divided_by modulo first last slice
+count join secure unsecure`. An unknown filter passes the value through and logs once,
 rather than failing the export.
 
 ### The product loop is lifted out
@@ -100,6 +114,27 @@ larger than one cron window exportable at all.
 | `xml` | template | no — arbitrary nesting has no record equivalent |
 | `csv` / `tsv` / `jsonl` | field map | **yes** |
 
+A field map row is `{"column": "...", "value": "<template>", "type": "..."}`.
+`type` is optional: `string` (default), `bool`, `int`, `number`, `json` or `list`.
+
+- **JSONL** writes real JSON types: `true`/`false`, numbers, objects (`json`) and
+  arrays (`list`, from a comma-separated value or a JSON list). A value that does
+  not convert stays a string, so validation can report it rather than it being
+  silently zeroed. With **Omit Empty Values** on, a column that rendered empty is
+  left out of the record instead of being written as `""`.
+- **CSV / TSV** write a `bool` as lowercase `true` / `false` and a `list` as one
+  comma-separated cell with commas inside an item encoded as `%2C`; `json` stays
+  serialized JSON in the cell.
+
+**Compression**: `gzip` publishes `<file name>.gz`. The run still appends plain
+text to its work file across ticks; the finished file is stream-compressed into a
+staging file beside the final one and renamed into place, so publication stays
+atomic and memory stays flat.
+
+**Purchasable Products Only** limits a feed to enabled simple, virtual and
+downloadable products — the rows a cart accepts by sku alone. Configurable,
+bundle and grouped parents drop out; their children stay.
+
 ## Delivery
 
 | Type | What it does |
@@ -109,6 +144,16 @@ larger than one cron window exportable at all.
 | `ftp` | Uploads through `Filesystem\Io\Ftp`. Needs `ext-ftp`. Unencrypted — prefer SFTP. |
 | `google_datasource` | Registers the feed as a FETCH data source in Merchant Center and triggers a fetch. |
 | `meta_batch` | Pushes records straight into a Meta catalog via `items_batch`, live during the export. |
+| `acp_feed_api` | Pushes the catalog to OpenAI's ACP Products API (`PATCH /product_feeds/{id}/products`), grouped into products with variants. |
+
+`sftp` authenticates with a password or an **SSH private key** (`private_key`,
+optionally `private_key_password`). Magento's `Io\Sftp` passes its credential
+straight to phpseclib 3's `login()`, which accepts a loaded key, so no adapter of
+its own is needed.
+
+Destinations are configured with `bin/magento magenx:feed:delivery` (see
+[CLI](#cli)). Settings whose name ends in `password`, `token`, `secret` or `key`
+are encrypted at rest.
 
 A new destination is one class implementing `Api\DelivererInterface` plus one
 `<item>` in `di.xml`. Adding **Pinterest**, **Microsoft Advertising**, **TikTok**
@@ -138,6 +183,77 @@ Needs a **system user** token (a user token expires) with `catalog_management`,
 and a role on the catalog. Requires a field-mapped feed; the deliverer refuses a
 template-driven one rather than sending nothing and reporting success.
 
+## Agentic commerce (OpenAI / ACP)
+
+The OpenAI product feed — the discovery side of the Agentic Commerce Protocol the
+MagenX storefront already implements for checkout under `/api/acp`.
+Spec: <https://developers.openai.com/commerce/specs/file-upload/products>.
+
+**1. Seller settings** — *Stores → Configuration → Magenx → Product Feeds →
+Agentic Commerce*, per store view: seller name, the **headless storefront URL**
+including its locale (e.g. `https://shop.example.com/en`), privacy / terms / return
+policy URLs, returns accepted and window, and **Offer Checkout in ChatGPT** (only
+once OpenAI has enabled checkout and the storefront's `ACP_ENABLE=1` is live).
+
+**2. The feed** — create a feed with Target Channel **AI / agentic shopping** and
+leave Template and Field Mapping empty. Saving fills in:
+
+- a field map for the OpenAI columns: the nine required ones (`item_id`, `title`,
+  `description`, `url`, `brand`, `seller_name`, `image_url`, `availability`,
+  `price`), `sale_price`, variants (`group_id`, `listing_has_variations`,
+  `variant_dict`), `additional_image_urls`, `product_category`, weight, review
+  aggregates, returns, seller links and `is_eligible_checkout` — typed, so JSONL
+  carries real booleans, integers and objects;
+- validation rules mirroring what the spec rejects or degrades;
+- JSONL, gzip, omit-empty and purchasable-only.
+
+Decisions baked into that mapping:
+
+- **`item_id` is the sku of the purchasable row.** The storefront's ACP checkout
+  adds exactly that id to a Magento cart by sku, so a configurable parent's sku
+  (not addable without options) is excluded by purchasable-only.
+- **`url` is the headless PDP**, `<storefront URL>/product/<url_key>` — the parent's
+  page for a variant. Without a storefront URL it falls back to Magento's product
+  URL, which a headless install does not serve.
+- **`brand` is `manufacturer`** (what the storefront's brand pages read), then the
+  parent's, then the configured fallback brand.
+- Only attributes every install has are referenced — the export aborts on an
+  unknown attribute code. Add `gtin`, `mpn`, `condition`, `color`, `material`...
+  against your own attribute codes; a `gtin` rule (check digit) is already in place.
+
+**3. Delivery** — OpenAI's file upload is **SFTP push**, full snapshot, stable file
+name, at least daily:
+
+```bash
+bin/magento magenx:feed:delivery --code=openai --type=sftp \
+    --set host=<host from OpenAI> --set username=<user> --set path=/ \
+    --set remote_filename=products.jsonl.gz \
+    --key-file=/secure/openai_sftp_key --enable --test
+```
+
+Or the **ACP Products API**, which OpenAI recommends for updates during the day
+on top of the daily file (or alone for a small catalog). The API root is issued at
+onboarding and is not public, so it is a setting:
+
+```bash
+ACP_API_KEY=... bin/magento magenx:feed:delivery --code=openai --type=acp_feed_api \
+    --set base_url=<https API root> --set feed_id=<product feed id> --set target_country=US \
+    --secret-env=api_key=ACP_API_KEY --enable --test
+```
+
+The API deliverer maps the same rows: grouped by `group_id` into a Product with
+Variants, money converted to integer minor units, `sale_price` → `price` with the
+regular price as `list_price`, `variant_dict` → `variant_options`, images →
+`media`, policy URLs → `seller.links`. Because a PATCH upserts a product whole,
+records are spooled to `var/magenx_feed/acp_api/` across ticks and sent when the
+run completes, so a product is never sent with only some of its variants. The
+last complete spool is kept, which is what `magenx:feed:deliver` re-sends.
+
+**Not covered:** Parquet output (OpenAI's preferred format; gzip JSONL is
+accepted), multi-file sharding (one file up to ~500k items / ~500 MB is within
+OpenAI's guidance), the Promotions API, and the file feed's `shipping` tuple and
+market columns, which need feed-specific setup with OpenAI first.
+
 ## Serving the feed file
 
 `pub/media/magenx-feed/<store_code>/<url_secret>/<filename>`
@@ -160,7 +276,39 @@ bin/magento magenx:feed:list
 bin/magento magenx:feed:generate --code=google_shopping     # runs to completion
 bin/magento magenx:feed:generate --all [--slice]            # --slice = one cron-sized tick
 bin/magento magenx:feed:deliver  --code=google_shopping     # re-send without regenerating
+bin/magento magenx:feed:delivery --code=openai --type=sftp --set host=... [--key-file=...] [--secret-env=key=ENV] [--enable|--disable] [--test]
 ```
+
+`magenx:feed:delivery` creates or updates one destination of one feed. Secrets
+belong in `--key-file` or `--secret-env`, not `--set`, which lands in shell history.
+
+## Validation rules
+
+Declared per feed as JSON: `{"field", "type", "severity", "message", ...params}`.
+
+| Type | Params | Passes when |
+|---|---|---|
+| `required` | | the value is not empty |
+| `max_length` / `min_length` | `length` | |
+| `start_with` / `end_with` / `is_one_of` | `values` | |
+| `alphanumeric` `ascii` `unicode` `numeric` `without_html` | | |
+| `regex` | `pattern` (no delimiters) | the pattern matches |
+| `gtin` | | 8, 12, 13 or 14 digits with a valid GS1 check digit |
+| `url` | | absolute http(s), no whitespace, no embedded credentials |
+| `money` | `allow_zero` | `79.99 USD`: decimal amount, space, ISO 4217 code; above zero unless allowed |
+| `boolean` | | true/false/1/0/yes/no — what a `bool` column converts |
+| `integer` / `decimal` | `min`, `max`, `decimals` | no exponent, no thousands separator |
+| `json_object` | `keys` | a JSON object of non-empty string values (`variant_dict`, `dimensions`) |
+| `required_if` | `other`, `equals` | not empty whenever `other` is non-empty (or equals the value) |
+| `only_if` | `other`, `equals` | present only when `other` is non-empty (or equals the value) |
+| `less_than_field` | `other` | strictly below `other`, same currency for money |
+| `not_equal_field` | `other` | differs from `other` |
+| `unique` | | no earlier row had this value |
+| `variant_group` | `group_by` | rows of one group share option names and differ in combination |
+
+Every rule but `required` / `required_if` skips an empty value. `unique` and
+`variant_group` compare rows within the part of the run the report covers — one
+cron tick, like the rest of the findings.
 
 ## Install
 
@@ -219,11 +367,6 @@ bin/magento cache:flush
   a Selling Partner account, an approved LWA developer app, role authorisation
   and per-marketplace product-type schemas, and it owns listings, orders and
   inventory rather than an advertising catalog. A separate module.
-- **The OpenAI / ChatGPT shopping feed as a *destination*.** The format is
-  public (UTF-8 delimited, `item_id`/`title`/`price`/`availability`/
-  `is_eligible_checkout`…) and a TSV feed produces it today, but the submission
-  endpoint and its auth are not published — so it is delivered by URL or SFTP
-  until they are.
 
 ## Verification status
 
@@ -246,6 +389,16 @@ Everything below was run in a sandbox with **PHP 8.4 but no Magento install**:
   scheduling, catch-up after cron downtime, validation severities, trailing empty
   CSV columns, quote escaping, TSV tab forcing, CDATA terminator splitting and
   illegal control-character stripping.
+- The agentic-commerce additions were exercised the same way, **94 cases, all
+  passing**: value typing and omit-empty in JSONL, typed CSV / TSV cells, every
+  new validation rule (GS1 check digits, money, cross-field, unique, variant
+  groups), the ACP preset rendered through the real template engine against
+  simple, variant and parentless records and passing its own rules, the
+  requirements it triggers, minor-unit price conversion, product / variant
+  grouping of the API payload across two cron ticks with a stale spool discarded,
+  retry with a reused idempotency key, re-send from the kept spool, and gzip
+  output verified with `gzip -t`.
+- Magento's coding standard (`phpcs.xml.dist`) reports nothing.
 
 **Nothing has been exercised against a live Magento.** Required before trusting
 it: `setup:upgrade` completing; the admin loading at all; the feed grid and the
@@ -255,4 +408,9 @@ filter; the published file being reachable at its public URL **through nginx**;
 store emulation producing store-scoped product and image URLs on a **cron** run
 rather than only from the admin; an SFTP test leaving the remote folder
 untouched; and a Google data source being created and fetched against a real
-Merchant Center account with a registered Cloud project.
+Merchant Center account with a registered Cloud project. For the ACP additions:
+the variant loader's SQL against a real configurable catalog (including Adobe
+Commerce's `row_id`), SFTP key login against OpenAI's endpoint, and the Products
+API against the base URL OpenAI issues — its host, rate limits and batch ceiling
+are not public, so the defaults (100 products per PATCH, three attempts) are
+guesses to confirm at onboarding.

@@ -8,6 +8,10 @@ declare(strict_types=1);
 namespace Magenx\ProductFeed\Controller\Adminhtml\Feed;
 
 use Magenx\ProductFeed\Controller\Adminhtml\Feed;
+use Magenx\ProductFeed\Model\Export\Writer\ValueTyper;
+use Magenx\ProductFeed\Model\Config\Source\Marketplace;
+use Magenx\ProductFeed\Model\Feed as FeedModel;
+use Magenx\ProductFeed\Model\Preset\AcpPreset;
 use Magenx\ProductFeed\Model\Template\Exception\TemplateSyntaxException;
 use Magenx\ProductFeed\Model\Template\TemplateEngine;
 use Magenx\ProductFeed\Model\FeedFactory;
@@ -25,7 +29,8 @@ class Save extends Feed implements HttpPostActionInterface
         FeedFactory $feedFactory,
         FeedResource $feedResource,
         Registry $registry,
-        private readonly TemplateEngine $templateEngine
+        private readonly TemplateEngine $templateEngine,
+        private readonly AcpPreset $acpPreset
     ) {
         parent::__construct($context, $feedFactory, $feedResource, $registry);
     }
@@ -48,6 +53,7 @@ class Save extends Feed implements HttpPostActionInterface
 
         try {
             $data = $this->normalize($data);
+            $presetApplied = $this->applyAgenticPreset($data);
 
             // Compile before saving. A template that does not parse would otherwise
             // be stored, and the failure would surface hours later as a cron error
@@ -65,6 +71,13 @@ class Save extends Feed implements HttpPostActionInterface
             $this->feedResource->save($feed);
 
             $this->messageManager->addSuccessMessage(__('The feed has been saved.'));
+            if ($presetApplied) {
+                $this->messageManager->addNoticeMessage(__(
+                    'The OpenAI (ACP) product feed mapping and validation rules were filled in: gzip-compressed '
+                    . 'JSONL, purchasable products only. Set the seller details under Stores > Configuration > '
+                    . 'Magenx > Product Feeds > Agentic Commerce before the first run.'
+                ));
+            }
             $this->_getSession()->setMagenxProductFeedFormData(null);
 
             if ($this->getRequest()->getParam('back')) {
@@ -98,9 +111,13 @@ class Save extends Feed implements HttpPostActionInterface
             }
         }
 
-        foreach (['is_active', 'csv_include_header', 'csv_bom'] as $key) {
+        foreach (['is_active', 'csv_include_header', 'csv_bom', 'omit_empty', 'purchasable_only'] as $key) {
             $data[$key] = isset($data[$key]) ? (int) (bool) $data[$key] : 0;
         }
+
+        $data['compression'] = ($data['compression'] ?? '') === FeedModel::COMPRESSION_GZIP
+            ? FeedModel::COMPRESSION_GZIP
+            : FeedModel::COMPRESSION_NONE;
 
         // The field map is edited as JSON today and may come from a dynamic-rows
         // control later, so both shapes are accepted. Either way blank rows are
@@ -124,7 +141,16 @@ class Save extends Feed implements HttpPostActionInterface
                 if ($column === '') {
                     continue;
                 }
-                $rows[] = ['column' => $column, 'value' => (string) ($row['value'] ?? '')];
+                $entry = ['column' => $column, 'value' => (string) ($row['value'] ?? '')];
+
+                // Only a non-default type is stored, so an untyped map round-trips
+                // byte-for-byte and "string" never has to be written out.
+                $type = ValueTyper::normalizeType($row['type'] ?? null);
+                if ($type !== ValueTyper::TYPE_STRING) {
+                    $entry['type'] = $type;
+                }
+
+                $rows[] = $entry;
             }
 
             $data['field_map'] = $rows === [] ? null : json_encode($rows, JSON_UNESCAPED_SLASHES);
@@ -140,6 +166,39 @@ class Save extends Feed implements HttpPostActionInterface
         }
 
         return $data;
+    }
+
+    /**
+     * Fill in the OpenAI product feed mapping for an "AI / agentic shopping" feed
+     * that has nothing yet - no field map and no template. A feed that already
+     * has either is the merchant's own work and is never overwritten; the rules
+     * are filled only when they are empty too.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function applyAgenticPreset(array &$data): bool
+    {
+        if (($data['marketplace'] ?? '') !== Marketplace::AGENTIC
+            || trim((string) ($data['template'] ?? '')) !== ''
+            || !empty($data['field_map'])
+        ) {
+            return false;
+        }
+
+        $data['field_map'] = json_encode($this->acpPreset->getFieldMap(), JSON_UNESCAPED_SLASHES);
+
+        if (trim((string) ($data['validation_rules'] ?? '')) === '') {
+            $data['validation_rules'] = json_encode(
+                $this->acpPreset->getValidationRules(),
+                JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT
+            );
+        }
+
+        foreach ($this->acpPreset->getFeedDefaults() as $key => $value) {
+            $data[$key] = $value;
+        }
+
+        return true;
     }
 
     /**

@@ -28,6 +28,11 @@ use Magenx\ProductFeed\Model\Feed;
  */
 class CsvWriter implements WriterInterface
 {
+    public function __construct(
+        private readonly ValueTyper $valueTyper
+    ) {
+    }
+
     public function open(Feed $feed, array $columns): string
     {
         $prefix = $feed->getData('csv_bom') ? "\xEF\xBB\xBF" : '';
@@ -41,12 +46,45 @@ class CsvWriter implements WriterInterface
 
     public function writeRecord(Feed $feed, array $record, array $columns): string
     {
+        $types = $feed->getColumnTypes();
+
         $values = [];
         foreach ($columns as $column) {
-            $values[] = $this->stringify($record[$column] ?? '');
+            $values[] = $this->typed(
+                $this->stringify($record[$column] ?? ''),
+                $types[$column] ?? ValueTyper::TYPE_STRING
+            );
         }
 
         return $this->row($feed, $values);
+    }
+
+    /**
+     * The delimited spelling of a typed column.
+     *
+     * A flag becomes lowercase true / false (never PHP's 1 / 0, which the
+     * agentic-commerce feed rejects for a boolean), and a list becomes one
+     * comma-separated cell with any comma inside an item percent-encoded, so a
+     * URL containing one does not split into two. JSON objects stay serialized
+     * JSON, which is how a delimited cell carries them.
+     */
+    private function typed(string $value, string $type): string
+    {
+        if ($type === ValueTyper::TYPE_BOOL) {
+            return $this->valueTyper->toDelimitedBool($value);
+        }
+
+        if ($type === ValueTyper::TYPE_LIST) {
+            $list = $this->valueTyper->convert($value, ValueTyper::TYPE_LIST);
+            if (is_array($list)) {
+                return implode(',', array_map(
+                    fn (mixed $item): string => str_replace(',', '%2C', $this->stringify($item)),
+                    $list
+                ));
+            }
+        }
+
+        return $value;
     }
 
     public function close(Feed $feed): string

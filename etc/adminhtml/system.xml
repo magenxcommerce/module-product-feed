@@ -78,6 +78,63 @@
                 </field>
             </group>
 
+            <group id="agentic" translate="label comment" type="text" sortOrder="35"
+                   showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Agentic Commerce (OpenAI / ACP)</label>
+                <comment><![CDATA[Seller facts the OpenAI product feed repeats on every row. Templates read them as <code>{{ context.store.name }}</code>, <code>{{ context.store.url }}</code>, <code>{{ context.store.privacy_policy }}</code>, <code>{{ context.store.terms }}</code>, <code>{{ context.store.return_policy }}</code>, <code>{{ context.store.accepts_returns }}</code>, <code>{{ context.store.return_days }}</code>, <code>{{ context.store.checkout }}</code>, <code>{{ context.store.brand }}</code> and <code>{{ context.store.weight_unit }}</code>. Set them per store view: each store view is its own feed.]]></comment>
+                <field id="seller_name" translate="label comment" type="text" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Seller Name</label>
+                    <comment><![CDATA[Shown to shoppers as who sells the item. Empty uses <em>General → Store Information → Store Name</em>, then the store view name. Never a placeholder: the feed rejects them.]]></comment>
+                </field>
+                <field id="default_brand" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Fallback Brand</label>
+                    <comment><![CDATA[Used for products with no <code>manufacturer</code> value. Fill it only if you sell your own brand; leave it empty if you resell, so a missing brand is reported by validation instead of being filled with the wrong one.]]></comment>
+                </field>
+                <field id="storefront_url" translate="label comment" type="text" sortOrder="30"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Headless Storefront URL</label>
+                    <validate>validate-url</validate>
+                    <comment><![CDATA[Base URL of the storefront shoppers actually use, including the locale segment, e.g. <code>https://shop.example.com/en</code>. The ACP mapping builds product links as <code>&lt;this&gt;/product/&lt;url_key&gt;</code>, the MagenX Commerce product route. Empty uses Magento's own product URL - wrong for a headless store, where Magento does not serve product pages.]]></comment>
+                </field>
+                <field id="privacy_policy_url" translate="label comment" type="text" sortOrder="40"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Privacy Policy URL</label>
+                    <validate>validate-url</validate>
+                    <comment><![CDATA[Required for checkout eligibility.]]></comment>
+                </field>
+                <field id="terms_url" translate="label comment" type="text" sortOrder="50"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Terms of Service URL</label>
+                    <validate>validate-url</validate>
+                    <comment><![CDATA[Required for checkout eligibility.]]></comment>
+                </field>
+                <field id="return_policy_url" translate="label" type="text" sortOrder="60"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Return Policy URL</label>
+                    <validate>validate-url</validate>
+                </field>
+                <field id="accepts_returns" translate="label" type="select" sortOrder="70"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Accepts Returns</label>
+                    <source_model>Magenx\ProductFeed\Model\Config\Source\AcceptsReturns</source_model>
+                </field>
+                <field id="return_days" translate="label comment" type="text" sortOrder="80"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Return Window (days)</label>
+                    <validate>validate-digits</validate>
+                    <comment><![CDATA[Exported only when returns are accepted.]]></comment>
+                    <depends><field id="accepts_returns">yes</field></depends>
+                </field>
+                <field id="checkout_enabled" translate="label comment" type="select" sortOrder="90"
+                       showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Offer Checkout in ChatGPT</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Sets <code>is_eligible_checkout</code>. Turn on only once OpenAI has enabled checkout for your integration <strong>and</strong> the storefront's <code>/api/acp</code> checkout is live (<code>ACP_ENABLE=1</code> with Stripe configured). The flag alone does not enable checkout.]]></comment>
+                </field>
+            </group>
+
             <group id="notifications" translate="label" type="text" sortOrder="40"
                    showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Email Notifications</label>

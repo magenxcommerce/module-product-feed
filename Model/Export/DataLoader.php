@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace Magenx\ProductFeed\Model\Export;
 
 use Magenx\ProductFeed\Model\Export\Loader\CategoryLoader;
+use Magenx\ProductFeed\Model\Export\Loader\ConfigurableAttributeLoader;
 use Magenx\ProductFeed\Model\Export\Loader\GalleryLoader;
 use Magenx\ProductFeed\Model\Export\Loader\InventorySourceLoader;
 use Magenx\ProductFeed\Model\Export\Loader\LoadScope;
@@ -46,7 +47,8 @@ class DataLoader
         private readonly ReviewLoader $reviewLoader,
         private readonly TierPriceLoader $tierPriceLoader,
         private readonly InventorySourceLoader $inventorySourceLoader,
-        private readonly CollectionFactory $collectionFactory
+        private readonly CollectionFactory $collectionFactory,
+        private readonly ConfigurableAttributeLoader $configurableAttributeLoader
     ) {
     }
 
@@ -74,6 +76,11 @@ class DataLoader
             $records,
             $requirements->needsInventorySources,
             fn (): array => $this->inventorySourceLoader->load($scope)
+        );
+        $this->mergeIf(
+            $records,
+            $requirements->needsConfigurableAttributes,
+            fn (): array => $this->configurableAttributeLoader->load($scope)
         );
 
         if ($requirements->needsTierPrices) {
@@ -122,6 +129,10 @@ class DataLoader
             // load renders blank rather than the literal path.
             'gallery' => [],
             'images' => '',
+            'image' => '',
+            'variant_group_id' => '',
+            'variant_dict' => [],
+            'configurable_attributes' => [],
             'tier_prices' => [],
             'reviews' => [],
             'inventory' => [],
@@ -213,20 +224,32 @@ class DataLoader
             $parentRecords[(int) $parent->getId()] = $this->baseRecord($parent, $requirements);
         }
 
-        // Parents get their own prices: a child's price is not the parent's, and a
-        // feed keyed on the parent URL usually wants the parent's "from" price.
-        if ($requirements->needsPrices && $parentIds !== []) {
-            $parentScope = new LoadScope(
-                $parentIds,
-                [],
-                $scope->storeId,
-                $scope->websiteId,
-                $scope->mediaBaseUrl,
-                $scope->customerGroupId
-            );
-            foreach ($this->priceLoader->load($parentScope) as $parentId => $prices) {
+        // Parents get their own prices, images and review summary: a child's
+        // price is not the parent's, a variant is often created without a gallery
+        // of its own, and reviews are written against the product page - the
+        // parent - so product.parent.* is the only place any of them exist.
+        $parentLoads = [
+            [$requirements->needsPrices, fn (LoadScope $s): array => $this->priceLoader->load($s)],
+            [$requirements->needsGallery, fn (LoadScope $s): array => $this->galleryLoader->load($s)],
+            [$requirements->needsReviews, fn (LoadScope $s): array => $this->reviewLoader->load($s)],
+        ];
+
+        $parentScope = new LoadScope(
+            $parentIds,
+            [],
+            $scope->storeId,
+            $scope->websiteId,
+            $scope->mediaBaseUrl,
+            $scope->customerGroupId
+        );
+
+        foreach ($parentLoads as [$needed, $load]) {
+            if (!$needed) {
+                continue;
+            }
+            foreach ($load($parentScope) as $parentId => $data) {
                 if (isset($parentRecords[$parentId])) {
-                    $parentRecords[$parentId] = array_merge($parentRecords[$parentId], $prices);
+                    $parentRecords[$parentId] = array_merge($parentRecords[$parentId], $data);
                 }
             }
         }

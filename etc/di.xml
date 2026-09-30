@@ -44,7 +44,7 @@
     <!-- ====================== Delivery destinations ==================== -->
     <!-- Two shapes behind one interface:
            file-based  (file, ftp, sftp, google_datasource) consume the published file
-           push-based  (meta_batch) consume the record stream directly
+           push-based  (meta_batch, acp_feed_api) consume the record stream directly
          A push deliverer must NEVER parse a generated file back apart - that is
          why Runner emits records before serialization. -->
     <type name="Magenx\ProductFeed\Model\Delivery\DelivererPool">
@@ -55,6 +55,7 @@
                 <item name="sftp" xsi:type="object">Magenx\ProductFeed\Model\Delivery\SftpDeliverer</item>
                 <item name="google_datasource" xsi:type="object">Magenx\ProductFeed\Model\Delivery\GoogleDataSourceDeliverer</item>
                 <item name="meta_batch" xsi:type="object">Magenx\ProductFeed\Model\Delivery\MetaCatalogBatchDeliverer</item>
+                <item name="acp_feed_api" xsi:type="object">Magenx\ProductFeed\Model\Delivery\AcpFeedApiDeliverer</item>
             </argument>
         </arguments>
     </type>
@@ -75,6 +76,11 @@
         </arguments>
     </type>
     <type name="Magenx\ProductFeed\Model\Export\Runner">
+        <arguments>
+            <argument name="logger" xsi:type="object">MagenxProductFeedLogger</argument>
+        </arguments>
+    </type>
+    <type name="Magenx\ProductFeed\Model\Delivery\AcpFeedApiDeliverer">
         <arguments>
             <argument name="logger" xsi:type="object">MagenxProductFeedLogger</argument>
         </arguments>
@@ -111,6 +117,7 @@
                 <item name="magenx_product_feed_list" xsi:type="object">Magenx\ProductFeed\Console\Command\ListCommand</item>
                 <item name="magenx_product_feed_generate" xsi:type="object">Magenx\ProductFeed\Console\Command\GenerateCommand</item>
                 <item name="magenx_product_feed_deliver" xsi:type="object">Magenx\ProductFeed\Console\Command\DeliverCommand</item>
+                <item name="magenx_product_feed_delivery" xsi:type="object">Magenx\ProductFeed\Console\Command\DeliveryCommand</item>
             </argument>
         </arguments>
     </type>

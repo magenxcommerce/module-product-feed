@@ -38,6 +38,20 @@
                      key grants programmatic access to the Merchant Center account. -->
                 <service_account_key/>
             </google>
+            <agentic>
+                <seller_name/>
+                <default_brand/>
+                <storefront_url/>
+                <privacy_policy_url/>
+                <terms_url/>
+                <return_policy_url/>
+                <accepts_returns/>
+                <return_days/>
+                <!-- Off: the flag only opts in once OpenAI has enabled checkout for
+                     the integration, and claiming it early lists items as buyable
+                     in ChatGPT that cannot be bought there. -->
+                <checkout_enabled>0</checkout_enabled>
+            </agentic>
             <notifications>
                 <enabled>0</enabled>
                 <recipient/>

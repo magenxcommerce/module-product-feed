@@ -63,6 +63,12 @@
                 comment="Emit the column-name header row"/>
         <column xsi:type="smallint" name="csv_bom" unsigned="true" nullable="false" default="0"
                 comment="Prepend a UTF-8 BOM. Some consumers require it - most reject it. Off by default."/>
+        <column xsi:type="smallint" name="purchasable_only" unsigned="true" nullable="false" default="0"
+                comment="Export only enabled products that can be added to a cart by sku alone: simple, virtual and downloadable. Configurable, bundle and grouped parents are skipped; their children are exported."/>
+        <column xsi:type="smallint" name="omit_empty" unsigned="true" nullable="false" default="0"
+                comment="JSONL only: leave a column that rendered empty out of the record instead of writing an empty string"/>
+        <column xsi:type="varchar" name="compression" length="16" nullable="false" default="none"
+                comment="Output compression code: none or gzip. gzip publishes the file under its name plus .gz"/>
         <column xsi:type="mediumtext" name="conditions_serialized" nullable="true"
                 comment="Product filter condition tree (JSON). Column name fixed by Magento\Rule\Model\AbstractModel."/>
         <column xsi:type="text" name="validation_rules" nullable="true"
@@ -134,7 +140,7 @@
         <column xsi:type="int" name="feed_id" unsigned="true" nullable="false"
                 comment="Owning feed"/>
         <column xsi:type="varchar" name="type" length="32" nullable="false"
-                comment="Deliverer code registered in di.xml: file | ftp | sftp | google_datasource | meta_batch"/>
+                comment="Deliverer code registered in di.xml: file | ftp | sftp | google_datasource | meta_batch | acp_feed_api"/>
         <column xsi:type="smallint" name="is_active" unsigned="true" nullable="false" default="0"
                 comment="Whether this destination is delivered to"/>
         <column xsi:type="text" name="config" nullable="true"

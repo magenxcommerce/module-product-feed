@@ -25,6 +25,15 @@ class ValidationReport
     private array $findings = [];
 
     /**
+     * Cross-record memory for rules that compare products with each other
+     * (unique ids, variant groups). Lives on the report because the report is
+     * what is scoped to one run; the Validator itself is a shared service.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    private array $memory = [];
+
+    /**
      * @param string $example Identifier of the offending product
      * @param int $maxExamples Cap on retained examples; the count stays exact
      */
@@ -54,6 +63,19 @@ class ValidationReport
         if ($example !== '' && count($this->findings[$key]['examples']) < $maxExamples) {
             $this->findings[$key]['examples'][] = $example;
         }
+    }
+
+    /**
+     * Value previously stored under bucket/key, or null.
+     */
+    public function recall(string $bucket, string $key): mixed
+    {
+        return $this->memory[$bucket][$key] ?? null;
+    }
+
+    public function remember(string $bucket, string $key, mixed $value): void
+    {
+        $this->memory[$bucket][$key] = $value;
     }
 
     public function isEmpty(): bool
