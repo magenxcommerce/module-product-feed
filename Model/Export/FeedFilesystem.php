@@ -50,6 +50,14 @@ class FeedFilesystem
 
     private const PART_SUFFIX = '.part';
 
+    private const GZIP_SUFFIX = '.gz';
+
+    /** Compressed output before its rename into place. Distinct from .part, which stays plain text. */
+    private const GZIP_STAGING_SUFFIX = '.gzpart';
+
+    /** Read size when compressing: bounded memory whatever the feed's size. */
+    private const COMPRESS_CHUNK_BYTES = 1048576;
+
     public function __construct(
         private readonly Filesystem $filesystem,
         private readonly StoreManagerInterface $storeManager
@@ -151,11 +159,31 @@ class FeedFilesystem
     }
 
     /**
+     * The name a run's output is published under: the rendered file name, plus
+     * .gz when the feed is compressed (unless the merchant already wrote it).
+     */
+    public function getPublishedName(Feed $feed, string $filename): string
+    {
+        if ($feed->getCompression() !== Feed::COMPRESSION_GZIP || str_ends_with(strtolower($filename), '.gz')) {
+            return $filename;
+        }
+
+        return $filename . self::GZIP_SUFFIX;
+    }
+
+    /**
      * Make the work file the live file.
      *
      * Same-directory rename, so a consumer polling the URL sees either the
      * previous complete file or the new complete file, never a half-written one.
      *
+     * A compressed feed is gzipped into its own temporary file next to the final
+     * one and THAT is renamed into place, so the same guarantee holds. The work
+     * file stays uncompressed while the run appends to it across ticks: gzip
+     * members can be concatenated, but enough consumers stop reading after the
+     * first member that appending compressed chunks is not safe.
+     *
+     * @return string Media-relative path of the published file
      * @throws NoSuchEntityException
      * @throws FileSystemException
      * @throws LocalizedException
@@ -164,7 +192,8 @@ class FeedFilesystem
     {
         $writer = $this->getMediaWriter();
         $work = $this->getWorkPath($feed, $filename);
-        $final = $this->getRelativePath($feed, $filename);
+        $published = $this->getPublishedName($feed, $filename);
+        $final = $this->getRelativePath($feed, $published);
 
         if (!$writer->isExist($work)) {
             throw new LocalizedException(
@@ -172,7 +201,16 @@ class FeedFilesystem
             );
         }
 
-        $writer->renameFile($work, $final);
+        if ($feed->getCompression() !== Feed::COMPRESSION_GZIP) {
+            $writer->renameFile($work, $final);
+
+            return $final;
+        }
+
+        $staging = $final . self::GZIP_STAGING_SUFFIX;
+        $this->gzip($writer->getAbsolutePath($work), $writer->getAbsolutePath($staging), $feed);
+        $writer->renameFile($staging, $final);
+        $writer->delete($work);
 
         return $final;
     }
@@ -184,11 +222,61 @@ class FeedFilesystem
     public function discardWork(Feed $feed, string $filename): void
     {
         $writer = $this->getMediaWriter();
-        $work = $this->getWorkPath($feed, $filename);
 
-        if ($writer->isExist($work)) {
-            $writer->delete($work);
+        $leftovers = [
+            $this->getWorkPath($feed, $filename),
+            $this->getRelativePath($feed, $this->getPublishedName($feed, $filename)) . self::GZIP_STAGING_SUFFIX,
+        ];
+
+        foreach ($leftovers as $path) {
+            if ($writer->isExist($path)) {
+                $writer->delete($path);
+            }
         }
+    }
+
+    /**
+     * Stream-compress one file into another, a chunk at a time.
+     *
+     * @throws LocalizedException
+     */
+    private function gzip(string $source, string $target, Feed $feed): void
+    {
+        if (!function_exists('gzopen')) {
+            throw new LocalizedException(
+                __('Feed "%1" is set to gzip, but PHP\'s zlib extension is not installed.', $feed->getCode())
+            );
+        }
+
+        // phpcs:disable Magento2.Functions.DiscouragedFunction -- streaming zlib I/O has no Magento filesystem equivalent; paths come from the media directory writer.
+        $in = fopen($source, 'rb');
+        $out = gzopen($target, 'wb6');
+
+        if ($in === false || $out === false) {
+            if ($in !== false) {
+                fclose($in);
+            }
+            if ($out !== false) {
+                gzclose($out);
+            }
+            throw new LocalizedException(__('Could not compress the output of feed "%1".', $feed->getCode()));
+        }
+
+        try {
+            while (!feof($in)) {
+                $chunk = fread($in, self::COMPRESS_CHUNK_BYTES);
+                if ($chunk === false) {
+                    throw new LocalizedException(__('Could not read the output of feed "%1".', $feed->getCode()));
+                }
+                if ($chunk !== '' && gzwrite($out, $chunk) === false) {
+                    throw new LocalizedException(__('Could not compress the output of feed "%1".', $feed->getCode()));
+                }
+            }
+        } finally {
+            fclose($in);
+            gzclose($out);
+        }
+        // phpcs:enable Magento2.Functions.DiscouragedFunction
     }
 
     /**

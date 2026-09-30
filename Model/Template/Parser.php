@@ -46,9 +46,12 @@ class Parser
         'tier_prices' => true,
         'source_items' => true,
         'configurable_attributes' => true,
+        'variant_dict' => true,
+        'variant_group_id' => true,
         'parent' => true,
         'reviews_count' => true,
         'rating_summary' => true,
+        'rating_percent' => true,
         'attribute_set' => true,
         'stock' => true,
     ];
@@ -203,6 +206,12 @@ class Parser
 
         $head = explode('.', $field)[0];
 
+        // The review summary fields come from the same loader as the review list;
+        // without this {{ product.reviews_count }} was never loaded and always
+        // rendered empty.
+        if (in_array($head, ['reviews_count', 'rating_summary', 'rating_percent'], true)) {
+            $state['reviews'] = true;
+        }
         if (in_array($head, self::PRICE_FIELDS, true)) {
             $state['prices'] = true;
         }
@@ -221,7 +230,7 @@ class Parser
         if ($head === 'tier_prices') {
             $state['tier'] = true;
         }
-        if ($head === 'configurable_attributes') {
+        if (in_array($head, ['configurable_attributes', 'variant_dict', 'variant_group_id'], true)) {
             $state['configurable'] = true;
         }
         if ($head === 'url' || $head === 'url_with_options') {

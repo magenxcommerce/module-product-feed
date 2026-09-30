@@ -24,7 +24,8 @@
         "magento/module-email": "*"
     },
     "suggest": {
-        "ext-ftp": "Required only for plain FTP delivery. Nothing else needs it: SFTP goes through Magento's own Filesystem\\Io\\Sftp adapter, and the Google and Meta destinations are plain HTTPS."
+        "ext-ftp": "Required only for plain FTP delivery. Nothing else needs it: SFTP goes through Magento's own Filesystem\\Io\\Sftp adapter, and the Google and Meta destinations are plain HTTPS.",
+        "ext-zlib": "Required only for feeds set to gzip compression, which the OpenAI (agentic commerce) file upload expects."
     },
     "autoload": {
         "files": [

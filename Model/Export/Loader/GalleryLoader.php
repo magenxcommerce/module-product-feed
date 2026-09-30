@@ -30,7 +30,7 @@ class GalleryLoader
     }
 
     /**
-     * @return array<int, array<string, mixed>> productId => ['gallery' => string[], 'images' => string]
+     * @return array<int, array<string, mixed>> productId => ['gallery' => string[], 'images' => string, 'image' => string]
      */
     public function load(LoadScope $scope): array
     {
@@ -98,6 +98,10 @@ class GalleryLoader
             $result[$productId] = [
                 'gallery' => $urls,
                 'images' => implode(',', $urls),
+                // `image` is a synthetic field (Parser never selects it as an
+                // attribute), so it has to be filled here or it always renders
+                // empty. First enabled image by position.
+                'image' => $urls[0] ?? '',
             ];
         }
 

@@ -29,6 +29,10 @@ class Config
     public const XML_PATH_GOOGLE_MERCHANT_ID = 'magenx_product_feed/google/merchant_id';
     public const XML_PATH_GOOGLE_KEY_FILE = 'magenx_product_feed/google/service_account_key';
 
+    public const XML_PATH_AGENTIC = 'magenx_product_feed/agentic/';
+    public const XML_PATH_STORE_NAME = 'general/store_information/name';
+    public const XML_PATH_WEIGHT_UNIT = 'general/locale/weight_unit';
+
     public const XML_PATH_NOTIFY_ENABLED = 'magenx_product_feed/notifications/enabled';
     public const XML_PATH_NOTIFY_RECIPIENT = 'magenx_product_feed/notifications/recipient';
     public const XML_PATH_NOTIFY_TEMPLATE = 'magenx_product_feed/notifications/failure_template';
@@ -110,6 +114,49 @@ class Config
     {
         return (string) $this->value(self::XML_PATH_NOTIFY_TEMPLATE, $storeId)
             ?: 'magenx_product_feed_notifications_failure_template';
+    }
+
+    /**
+     * Store-level facts an agentic-commerce feed repeats on every row, exposed to
+     * templates as context.store.*.
+     *
+     * Kept in configuration rather than in the field map because they are facts
+     * about the SELLER, identical across products and different per store view:
+     * a merchant should state their returns policy once, not once per feed.
+     *
+     * Flags come out as the strings "true" / "false" / "" so a template can drop
+     * them straight into a bool-typed column; the return window is only given
+     * when returns are accepted, because the spec says to supply it only then.
+     *
+     * @return array<string, string>
+     */
+    public function getAgenticContext(?int $storeId = null): array
+    {
+        $get = fn (string $field): string => trim((string) $this->value(self::XML_PATH_AGENTIC . $field, $storeId));
+
+        $accepts = $get('accepts_returns');
+        $days = (int) $get('return_days');
+
+        return [
+            'name' => $get('seller_name') ?: trim((string) $this->value(self::XML_PATH_STORE_NAME, $storeId)),
+            'brand' => $get('default_brand'),
+            'url' => rtrim($get('storefront_url'), '/'),
+            'privacy_policy' => $get('privacy_policy_url'),
+            'terms' => $get('terms_url'),
+            'return_policy' => $get('return_policy_url'),
+            'accepts_returns' => match ($accepts) {
+                Source\AcceptsReturns::YES => 'true',
+                Source\AcceptsReturns::NO => 'false',
+                default => '',
+            },
+            'return_days' => $accepts === Source\AcceptsReturns::YES && $days > 0 ? (string) $days : '',
+            'checkout' => $this->flag(self::XML_PATH_AGENTIC . 'checkout_enabled', $storeId) ? 'true' : 'false',
+            'weight_unit' => match (strtolower(trim((string) $this->value(self::XML_PATH_WEIGHT_UNIT, $storeId)))) {
+                'lbs', 'lb' => 'lb',
+                'kgs', 'kg' => 'kg',
+                default => '',
+            },
+        ];
     }
 
     private function value(string $path, ?int $storeId): mixed

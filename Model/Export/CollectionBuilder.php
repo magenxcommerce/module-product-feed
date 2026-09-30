@@ -9,6 +9,7 @@ namespace Magenx\ProductFeed\Model\Export;
 
 use Magenx\ProductFeed\Model\Feed;
 use Magenx\ProductFeed\Model\Template\Requirements;
+use Magento\Catalog\Model\Product\Attribute\Source\Status as ProductStatus;
 use Magento\Catalog\Model\ResourceModel\Product\Collection;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory;
 use Magento\Rule\Model\Condition\Sql\Builder as SqlBuilder;
@@ -88,9 +89,29 @@ class CollectionBuilder
             $collection->addUrlRewrite();
         }
 
+        if ($feed->isPurchasableOnly()) {
+            $this->restrictToPurchasable($collection);
+        }
+
         $this->applyConditions($feed, $collection);
 
         return $collection;
+    }
+
+    /**
+     * Only rows a buyer - or an agent checking out for one - can put in a cart by
+     * sku alone.
+     *
+     * A configurable, bundle or grouped product is a container: adding its sku
+     * without option selections fails, and an agentic-commerce checkout adds
+     * exactly what the feed's item id says. Their children are the purchasable
+     * rows and stay in. Disabled products are dropped here too, because listing
+     * something that cannot be bought is worse than not listing it.
+     */
+    private function restrictToPurchasable(Collection $collection): void
+    {
+        $collection->addAttributeToFilter('status', ProductStatus::STATUS_ENABLED);
+        $collection->addFieldToFilter('type_id', ['in' => Feed::PURCHASABLE_TYPES]);
     }
 
     private function applyConditions(Feed $feed, Collection $collection): void
