@@ -9,6 +9,7 @@ namespace Magenx\ProductFeed\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magenx\ProductFeed\Model\Config\Source\AcceptsReturns;
 
 /**
  * Typed reader over magenx_product_feed/*.
@@ -145,11 +146,11 @@ class Config
             'terms' => $get('terms_url'),
             'return_policy' => $get('return_policy_url'),
             'accepts_returns' => match ($accepts) {
-                Source\AcceptsReturns::YES => 'true',
-                Source\AcceptsReturns::NO => 'false',
+                AcceptsReturns::YES => 'true',
+                AcceptsReturns::NO => 'false',
                 default => '',
             },
-            'return_days' => $accepts === Source\AcceptsReturns::YES && $days > 0 ? (string) $days : '',
+            'return_days' => $accepts === AcceptsReturns::YES && $days > 0 ? (string) $days : '',
             'checkout' => $this->flag(self::XML_PATH_AGENTIC . 'checkout_enabled', $storeId) ? 'true' : 'false',
             'weight_unit' => match (strtolower(trim((string) $this->value(self::XML_PATH_WEIGHT_UNIT, $storeId)))) {
                 'lbs', 'lb' => 'lb',
