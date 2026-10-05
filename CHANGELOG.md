@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/magenxcommerce/module-product-feed/compare/v1.1.0...v1.1.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* Resolve AcceptsReturns source model namespace in Config ([cdf3d61](https://github.com/magenxcommerce/module-product-feed/commit/cdf3d6141c386547a73858a71d963f41a75d3e7c))
+* Simplify AcceptsReturns import in Config model ([#10](https://github.com/magenxcommerce/module-product-feed/issues/10)) ([cdf3d61](https://github.com/magenxcommerce/module-product-feed/commit/cdf3d6141c386547a73858a71d963f41a75d3e7c))
+
 ## [1.1.0](https://github.com/magenxcommerce/module-product-feed/compare/v1.0.1...v1.1.0) (2026-09-30)
 
 
