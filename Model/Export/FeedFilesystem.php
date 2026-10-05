@@ -19,12 +19,12 @@ use Magento\Store\Model\StoreManagerInterface;
 /**
  * Where feed files live, and how they become visible.
  *
- * Layout:  pub/media/magenx-feed/<store_code>/<url_secret>/<filename>
+ * Layout:  pub/media/magenx_feed/<store_code>/<url_secret>/<filename>
  *
  * The secret path segment is not decoration. A feed is a complete
  * machine-readable dump of the catalog and may carry cost price, margin or
  * supplier SKU if the merchant maps them, so a guessable
- * /media/magenx-feed/products.xml is a competitor's afternoon.
+ * /media/magenx_feed/products.xml is a competitor's afternoon.
  *
  * PUBLICATION IS AN ATOMIC RENAME, and that is why the work file is written in
  * the SAME directory as its final destination rather than in var/: rename() is
@@ -36,7 +36,7 @@ use Magento\Store\Model\StoreManagerInterface;
 class FeedFilesystem
 {
     /** Root directory under pub/media. */
-    public const MEDIA_ROOT = 'magenx-feed';
+    public const MEDIA_ROOT = 'magenx_feed';
 
     /**
      * Directory under var/ holding the Google service-account key.
@@ -65,7 +65,7 @@ class FeedFilesystem
     }
 
     /**
-     * Media-relative directory for a feed, e.g. magenx-feed/default/ab12.../
+     * Media-relative directory for a feed, e.g. magenx_feed/default/ab12.../
      *
      * @throws NoSuchEntityException
      */
