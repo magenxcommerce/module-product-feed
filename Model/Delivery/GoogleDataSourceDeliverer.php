@@ -22,7 +22,7 @@ use Psr\Log\LoggerInterface;
  *
  * The file is not uploaded. Google fetches it from the feed's public URL, on its
  * own schedule and again immediately after each run - which is why the File
- * destination (or an nginx rule making /media/magenx-feed/ reachable) is a
+ * destination (or an nginx rule making /media/magenx_feed/ reachable) is a
  * prerequisite, and why the deliverer refuses to run when the URL is not public.
  *
  * TIMELINE THIS EXISTS FOR: the Content API for Shopping v2.1 sunsets on
@@ -225,7 +225,7 @@ class GoogleDataSourceDeliverer implements DelivererInterface
                 return (string) __(
                     'The feed URL "%1" is not reachable from the public internet, so Google cannot fetch it. '
                     . 'Set the store\'s base media URL to its public hostname and make sure the web server '
-                    . 'serves /media/magenx-feed/.',
+                    . 'serves /media/magenx_feed/.',
                     $url
                 );
             }

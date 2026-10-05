@@ -256,11 +256,17 @@ market columns, which need feed-specific setup with OpenAI first.
 
 ## Serving the feed file
 
-`pub/media/magenx-feed/<store_code>/<url_secret>/<filename>`
+`pub/media/magenx_feed/<store_code>/<url_secret>/<filename>`
 
 The random segment is not decoration: a feed is a complete machine-readable dump
 of the catalog and may carry cost price or supplier SKU if the merchant maps
 those columns.
+
+Up to 1.1.x the root was `pub/media/magenx-feed/`. `setup:upgrade` moves it to
+`magenx_feed/`, so the public URL of every feed changes: update the nginx
+location, and re-register the URL with any consumer that fetches it on its own
+schedule. The Google Merchant API destination updates its fetch URL on the next
+run by itself.
 
 **In this stack `/media/*` is owned by imgproxy and will not serve an XML or CSV
 file.** Without an nginx location of its own the request falls through to the
